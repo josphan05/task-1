@@ -1,0 +1,140 @@
+/* ========================================
+   Custom Styles
+   ======================================== */
+
+/* Sidebar dropdown */
+.nav-group-items {
+    display: none;
+}
+
+.nav-group.show > .nav-group-items {
+    display: block;
+}
+
+.nav-group-toggle::after {
+    content: "";
+    display: block;
+    flex: 0 0 8px;
+    height: 8px;
+    margin-left: auto;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='rgba(255,255,255,.6)'%3E%3Cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: center;
+    transition: transform 0.3s;
+}
+
+.nav-group.show > .nav-group-toggle::after {
+    transform: rotate(180deg);
+}
+
+/* Sidebar - Let CoreUI handle the toggle, we only customize nav bullets */
+.sidebar-narrow-unfoldable:not(:hover) .nav-icon-bullet {
+    display: block !important;
+}
+
+.sidebar-narrow-unfoldable:hover .nav-icon-bullet {
+    display: none !important;
+}
+
+/* ========================================
+   Select2 Styles
+   ======================================== */
+
+.select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice {
+    background-color: #e0e7ff;
+    border: 1px solid #c7d2fe;
+    color: #4338ca;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.8125rem;
+    font-weight: 500;
+}
+
+.select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice__remove {
+    color: #6366f1;
+    border-right-color: #c7d2fe;
+}
+
+.select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice__remove:hover {
+    background-color: #c7d2fe;
+    color: #4338ca;
+}
+
+.select2-container--bootstrap-5 .select2-dropdown .select2-results__option--selected {
+    background-color: #6366f1;
+    color: #fff;
+}
+
+.select2-container--bootstrap-5 .select2-dropdown .select2-results__option--highlighted:not(.select2-results__option--selected) {
+    background-color: #eef2ff;
+    color: #4338ca;
+}
+
+.select2-container--bootstrap-5.select2-container--focus .select2-selection {
+    border-color: #6366f1;
+    box-shadow: 0 0 0 0.2rem rgba(99, 102, 241, 0.15);
+}
+
+/* Select2 User Template */
+.select2-user-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 2px 0;
+}
+
+.select2-user-option img {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    flex-shrink: 0;
+}
+
+.select2-user-option .user-info {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.3;
+    overflow: hidden;
+}
+
+.select2-user-option .user-name {
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.select2-user-option .user-meta {
+    font-size: 0.75rem;
+    color: #6b7280;
+}
+
+.select2-results__option--selected .select2-user-option .user-name,
+.select2-results__option--selected .select2-user-option .user-meta {
+    color: #fff;
+}
+
+.select2-container--bootstrap-5 .select2-dropdown {
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.select2-toggle-all {
+    transition: all 0.2s ease;
+}
+
+/* ========================================
+   Footer Styles
+   ======================================== */
+
+/* Footer needs margin-left to respect sidebar */
+.sidebar-fixed ~ .wrapper > .footer,
+.sidebar-narrow-unfoldable ~ .wrapper > .footer {
+    margin-left: 16rem;
+}
+
+/* When sidebar is narrow unfoldable */
+.sidebar-narrow-unfoldable:not(:hover) ~ .wrapper > .footer {
+    margin-left: 4rem;
+}
+
