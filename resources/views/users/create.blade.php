@@ -53,6 +53,13 @@
                             @enderror
                         </div>
                         <div class="col-md-6 mb-3">
+                            <label for="telegram_id" class="form-label">Telegram id <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control @error('telegram_id') is-invalid @enderror" id="telegram_id" name="telegram_id" value="{{ old('telegram_id') }}" placeholder="telegram_id">
+                            @error('telegram_id')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+                        <div class="col-md-6 mb-3">
                             <label for="status" class="form-label">Trạng thái <span class="text-danger">*</span></label>
                             <select class="form-select @error('status') is-invalid @enderror" id="status" name="status">
                                 <option value="active" {{ old('status', 'active') == 'active' ? 'selected' : '' }}>Hoạt động</option>

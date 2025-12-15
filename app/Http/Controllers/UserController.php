@@ -70,6 +70,7 @@ class UserController extends Controller
      */
     public function update(UpdateUserRequest $request, User $user): RedirectResponse
     {
+
         $this->userService->updateUser($user->id, $request->validated());
 
         return redirect()

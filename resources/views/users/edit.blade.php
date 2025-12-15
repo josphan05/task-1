@@ -22,7 +22,7 @@
                 <form action="{{ route('users.update', $user) }}" method="POST">
                     @csrf
                     @method('PUT')
-                    
+
                     <div class="mb-3">
                         <label for="name" class="form-label">Họ và tên <span class="text-danger">*</span></label>
                         <input type="text" class="form-control @error('name') is-invalid @enderror" id="name" name="name" value="{{ old('name', $user->name) }}">
@@ -30,7 +30,7 @@
                         <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
-                    
+
                     <div class="mb-3">
                         <label for="email" class="form-label">Email <span class="text-danger">*</span></label>
                         <input type="email" class="form-control @error('email') is-invalid @enderror" id="email" name="email" value="{{ old('email', $user->email) }}">
@@ -38,7 +38,7 @@
                         <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
-                    
+
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="password" class="form-label">Mật khẩu mới</label>
@@ -53,6 +53,13 @@
                             @enderror
                             <small class="text-muted">Để trống nếu không muốn thay đổi</small>
                         </div>
+                         <div class="col-md-6 mb-3">
+                            <label for="telegram_id" class="form-label">Telegram id <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control @error('telegram_id') is-invalid @enderror" id="telegram_id" name="telegram_id" value="{{ old('telegram_id', $user->telegram_id) }}" placeholder="telegram_id">
+                            @error('telegram_id')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
                         <div class="col-md-6 mb-3">
                             <label for="status" class="form-label">Trạng thái <span class="text-danger">*</span></label>
                             <select class="form-select @error('status') is-invalid @enderror" id="status" name="status">
@@ -64,9 +71,9 @@
                             @enderror
                         </div>
                     </div>
-                    
+
                     <hr>
-                    
+
                     <div class="d-flex gap-2">
                         <button type="submit" class="btn btn-primary">
                             <i class="bi bi-check-circle me-1"></i> Cập nhật
@@ -79,7 +86,7 @@
             </div>
         </div>
     </div>
-    
+
     <div class="col-lg-4">
         <div class="card mb-4">
             <div class="card-header">
@@ -92,7 +99,7 @@
                 </div>
                 <h5 class="mb-1">{{ $user->name }}</h5>
                 <p class="text-muted mb-3">{{ $user->email }}</p>
-                
+
                 @if($user->status === 'active')
                 <span class="badge bg-success">
                     <i class="bi bi-check-circle me-1"></i> Hoạt động
@@ -114,7 +121,7 @@
                 </li>
             </ul>
         </div>
-        
+
         <div class="card border-danger">
             <div class="card-header bg-danger text-white">
                 <i class="bi bi-exclamation-triangle me-2"></i>
@@ -136,7 +143,7 @@
     function togglePassword(inputId) {
         const input = document.getElementById(inputId);
         const icon = document.getElementById(inputId + '-icon');
-        
+
         if (input.type === 'password') {
             input.type = 'text';
             icon.classList.remove('bi-eye');
