@@ -26,7 +26,7 @@ class StoreUserRequest extends FormRequest
             'name' => ['required', 'string', 'min:2', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:6'],
-            'telegram_id' => ['required', 'string', 'max:255'],
+            'telegram_id' => ['nullable', 'string', 'max:255'],
             'status' => ['required', 'in:active,inactive'],
         ];
     }
@@ -47,7 +47,6 @@ class StoreUserRequest extends FormRequest
             'email.unique' => 'Email này đã được sử dụng.',
             'password.required' => 'Vui lòng nhập mật khẩu.',
             'password.min' => 'Mật khẩu phải có ít nhất :min ký tự.',
-            'telegram_id.required' => 'Vui lòng nhập Telegram ID.',
             'telegram_id.max' => 'Telegram ID không được vượt quá :max ký tự.',
             'status.required' => 'Vui lòng chọn trạng thái.',
             'status.in' => 'Trạng thái không hợp lệ.',
