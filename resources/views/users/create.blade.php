@@ -3,90 +3,99 @@
 @section('title', 'Thêm người dùng mới')
 
 @section('breadcrumb')
-<ol class="breadcrumb mb-0">
-    <li class="breadcrumb-item"><a href="{{ route('dashboard') }}">Home</a></li>
-    <li class="breadcrumb-item"><a href="{{ route('users.index') }}">Người dùng</a></li>
-    <li class="breadcrumb-item active">Thêm mới</li>
-</ol>
+    <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item"><a href="{{ route('dashboard') }}">Home</a></li>
+        <li class="breadcrumb-item"><a href="{{ route('users.index') }}">Người dùng</a></li>
+        <li class="breadcrumb-item active">Thêm mới</li>
+    </ol>
 @endsection
 
 @section('content')
-<div class="row">
-    <div class="col-lg-8">
-        <div class="card mb-4">
-            <div class="card-header">
-                <i class="bi bi-person-plus me-2"></i>
-                <strong>Thêm người dùng mới</strong>
-            </div>
-            <div class="card-body">
-                <form action="{{ route('users.store') }}" method="POST">
-                    @csrf
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <i class="bi bi-person-plus me-2"></i>
+                    <strong>Thêm người dùng mới</strong>
+                </div>
+                <div class="card-body">
+                    <form action="{{ route('users.store') }}" method="POST" novalidate>
+                        @csrf
 
-                    <div class="mb-3">
-                        <label for="name" class="form-label">Họ và tên <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control @error('name') is-invalid @enderror" id="name" name="name" value="{{ old('name') }}" placeholder="Nhập họ và tên">
-                        @error('name')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="email" class="form-label">Email <span class="text-danger">*</span></label>
-                        <input type="email" class="form-control @error('email') is-invalid @enderror" id="email" name="email" value="{{ old('email') }}" placeholder="example@email.com">
-                        @error('email')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
-
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="password" class="form-label">Mật khẩu <span class="text-danger">*</span></label>
-                            <div class="form-password">
-                                <input type="password" class="form-control  @error('password') is-invalid @enderror" id="password" name="password"  placeholder="Nhập mật khẩu">
-                                <button type="button" class="form-password-action" data-coreui-toggle="password" aria-label="Toggle password visibility">
-                                  <span class="form-password-action-icon"></span>
-                                </button>
-                              </div>
-
-                            @error('password')
-                            <div class="invalid-feedback d-block">{{ $message }}</div>
+                        <div class="mb-3">
+                            <label for="name" class="form-label">Họ và tên <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control @error('name') is-invalid @enderror" id="name"
+                                name="name" value="{{ old('name') }}" placeholder="Nhập họ và tên">
+                            @error('name')
+                                <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="telegram_id" class="form-label">Telegram id <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control @error('telegram_id') is-invalid @enderror" id="telegram_id" name="telegram_id" value="{{ old('telegram_id') }}" placeholder="telegram_id">
-                            @error('telegram_id')
-                            <div class="invalid-feedback">{{ $message }}</div>
+
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email <span class="text-danger">*</span></label>
+                            <input type="email" class="form-control @error('email') is-invalid @enderror" id="email"
+                                name="email" value="{{ old('email') }}" placeholder="example@email.com">
+                            @error('email')
+                                <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="status" class="form-label">Trạng thái <span class="text-danger">*</span></label>
-                            <select class="form-select @error('status') is-invalid @enderror" id="status" name="status">
-                                <option value="active" {{ old('status', 'active') == 'active' ? 'selected' : '' }}>Hoạt động</option>
-                                <option value="inactive" {{ old('status') == 'inactive' ? 'selected' : '' }}>Không hoạt động</option>
-                            </select>
-                            @error('status')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="password" class="form-label">Mật khẩu <span class="text-danger">*</span></label>
+                                <div class="form-password">
+                                    <input type="password" class="form-control  @error('password') is-invalid @enderror"
+                                        id="password" name="password" placeholder="Nhập mật khẩu">
+                                    <button type="button" class="form-password-action" data-coreui-toggle="password"
+                                        aria-label="Toggle password visibility">
+                                        <span class="form-password-action-icon"></span>
+                                    </button>
+                                </div>
+                                @error('password')
+                                    <div class="invalid-feedback d-block mt-1">{{ $message }}</div>
+                                @enderror
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="telegram_id" class="form-label">Telegram id</label>
+                                <input type="text" class="form-control @error('telegram_id') is-invalid @enderror"
+                                    id="telegram_id" name="telegram_id" value="{{ old('telegram_id') }}"
+                                    placeholder="telegram_id">
+                                @error('telegram_id')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="status" class="form-label">Trạng thái <span
+                                        class="text-danger">*</span></label>
+                                <select class="form-select @error('status') is-invalid @enderror" id="status"
+                                    name="status">
+                                    <option value="active" {{ old('status', 'active') == 'active' ? 'selected' : '' }}>Hoạt
+                                        động</option>
+                                    <option value="inactive" {{ old('status') == 'inactive' ? 'selected' : '' }}>Không hoạt
+                                        động</option>
+                                </select>
+                                @error('status')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
                         </div>
-                    </div>
 
-                    <hr>
+                        <hr>
 
-                    <div class="d-flex gap-2">
-                        <button type="submit" class="btn btn-primary">
-                            <i class="bi bi-check-circle me-1"></i> Tạo người dùng
-                        </button>
-                        <a href="{{ route('users.index') }}" class="btn btn-secondary">
-                            <i class="bi bi-arrow-left me-1"></i> Quay lại
-                        </a>
-                    </div>
-                </form>
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-circle me-1"></i> Tạo người dùng
+                            </button>
+                            <a href="{{ route('users.index') }}" class="btn btn-secondary">
+                                <i class="bi bi-arrow-left me-1"></i> Quay lại
+                            </a>
+                        </div>
+                    </form>
+                </div>
             </div>
         </div>
-    </div>
 
-    {{-- <div class="col-lg-4">
+        {{-- <div class="col-lg-4">
         <div class="card mb-4">
             <div class="card-header">
                 <i class="bi bi-info-circle me-2"></i>
@@ -108,24 +117,58 @@
             </div>
         </div>
     </div> --}}
-</div>
+    </div>
+@endsection
 
 @push('scripts')
 <script>
-    function togglePassword(inputId) {
-        const input = document.getElementById(inputId);
-        const icon = document.getElementById(inputId + '-icon');
+    $(function () {
+        const $form = $('form[action="{{ route('users.store') }}"]');
 
-        if (input.type === 'password') {
-            input.type = 'text';
-            icon.classList.remove('bi-eye');
-            icon.classList.add('bi-eye-slash');
-        } else {
-            input.type = 'password';
-            icon.classList.remove('bi-eye-slash');
-            icon.classList.add('bi-eye');
-        }
-    }
+        $form.validate({
+            onfocusout: function (element) {
+                this.element(element);
+            },
+            onkeyup: false,
+            rules: {
+                name: { required: true, minlength: 2 },
+                email: { required: true, email: true },
+                password: { required: true, minlength: 6 },
+                status: { required: true }
+            },
+            messages: {
+                name: {
+                    required: 'Vui lòng nhập họ và tên.',
+                    minlength: 'Họ và tên phải có ít nhất 2 ký tự.'
+                },
+                email: {
+                    required: 'Vui lòng nhập email.',
+                    email: 'Email không hợp lệ.'
+                },
+                password: {
+                    required: 'Vui lòng nhập mật khẩu.',
+                    minlength: 'Mật khẩu phải có ít nhất 6 ký tự.'
+                },
+                status: 'Vui lòng chọn trạng thái.'
+            },
+            errorElement: 'div',
+            errorClass: 'invalid-feedback',
+            highlight: function (element) {
+                $(element).addClass('is-invalid');
+            },
+            unhighlight: function (element) {
+                $(element).removeClass('is-invalid');
+            },
+            errorPlacement: function (error, element) {
+                if (element.attr('type') === 'checkbox' || element.attr('type') === 'radio') {
+                    error.appendTo(element.closest('.mb-3'));
+                } else if (element.attr('id') === 'password') {
+                    error.insertAfter(element.closest('.form-password'));
+                } else {
+                    error.insertAfter(element);
+                }
+            }
+        });
+    });
 </script>
 @endpush
-@endsection

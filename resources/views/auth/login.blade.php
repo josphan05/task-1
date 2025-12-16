@@ -4,17 +4,17 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    
+
     <title>Đăng nhập - {{ config('app.name', 'Laravel') }}</title>
-    
+
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
+
     <!-- Styles -->
-    @vite(['resources/css/coreui.css', 'resources/js/coreui.js'])
-    
+    <link href="{{ asset('assets/css/coreui.min.css') }}" rel="stylesheet">
+
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -92,21 +92,20 @@
                 <h1>Core Laravel</h1>
                 <p>Đăng nhập để tiếp tục</p>
             </div>
-            
+
             <div class="login-body">
                 <form method="POST" action="{{ route('login') }}">
                     @csrf
-                    
+
                     <div class="mb-3">
                         <div class="form-floating">
-                            <input type="email" 
-                                   class="form-control @error('email') is-invalid @enderror" 
-                                   id="email" 
-                                   name="email" 
-                                   value="{{ old('email') }}" 
+                            <input type="email"
+                                   class="form-control @error('email') is-invalid @enderror"
+                                   id="email"
+                                   name="email"
+                                   value="{{ old('email') }}"
                                    placeholder="name@example.com"
-                                   autofocus
-                                   required>
+                                   autofocus>
                             <label for="email">
                                 <i class="bi bi-envelope me-2"></i>Email
                             </label>
@@ -115,15 +114,14 @@
                             @enderror
                         </div>
                     </div>
-                    
+
                     <div class="mb-3">
                         <div class="form-floating">
-                            <input type="password" 
-                                   class="form-control @error('password') is-invalid @enderror" 
-                                   id="password" 
-                                   name="password" 
-                                   placeholder="Password"
-                                   required>
+                            <input type="password"
+                                   class="form-control @error('password') is-invalid @enderror"
+                                   id="password"
+                                   name="password"
+                                   placeholder="Password">
                             <label for="password">
                                 <i class="bi bi-lock me-2"></i>Mật khẩu
                             </label>
@@ -132,7 +130,7 @@
                             @enderror
                         </div>
                     </div>
-                    
+
                     <div class="mb-4 d-flex justify-content-between align-items-center">
                         <div class="form-check">
                             <input class="form-check-input" type="checkbox" name="remember" id="remember" {{ old('remember') ? 'checked' : '' }}>
@@ -141,14 +139,14 @@
                             </label>
                         </div>
                     </div>
-                    
+
                     <div class="d-grid">
                         <button type="submit" class="btn btn-primary btn-login">
                             <i class="bi bi-box-arrow-in-right me-2"></i>Đăng nhập
                         </button>
                     </div>
                 </form>
-                
+
                 <div class="text-center mt-4">
                     <small class="text-muted">
                         © {{ date('Y') }} Core Laravel. All rights reserved.
@@ -157,7 +155,7 @@
             </div>
         </div>
     </div>
-    
+
     <!-- Toast Container -->
     <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 9999;">
         @if(session('success'))
@@ -171,7 +169,7 @@
             </div>
         </div>
         @endif
-        
+
         @if(session('error'))
         <div class="toast align-items-center text-white bg-danger border-0 show" role="alert" aria-live="assertive" aria-atomic="true" data-coreui-autohide="true" data-coreui-delay="5000">
             <div class="d-flex">
@@ -184,7 +182,8 @@
         </div>
         @endif
     </div>
-    
+
+    <script src="{{ asset('assets/js/coreui.bundle.min.js') }}"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             // Initialize toasts

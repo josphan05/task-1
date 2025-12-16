@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Jobs\SendTelegramMessage;
 use App\Repositories\Contracts\UserRepositoryInterface;
 use GuzzleHttp\Client;
 use Illuminate\Database\Eloquent\Collection;
@@ -38,9 +39,10 @@ class TelegramService
         ]);
 
         try {
+            $cleanMessage = htmlspecialchars($message, ENT_QUOTES, 'UTF-8');
             $response = $this->telegram->sendMessage([
                 'chat_id' => $chatId,
-                'text' => $message,
+                'text' => $cleanMessage,
                 'parse_mode' => $parseMode,
             ]);
 
@@ -67,11 +69,32 @@ class TelegramService
     }
 
 
+    public function sendMessageToGroup(string $message): array
+    {
+        $chatId = env('TELEGRAM_GROUP_ID');
+
+        if (empty($chatId)) {
+            return [
+                'success' => false,
+                'message' => 'Chưa cấu hình TELEGRAM_GROUP_ID trong env.',
+                'data' => null,
+            ];
+        }
+
+        SendTelegramMessage::dispatch($chatId, $message);
+
+        return [
+            'success' => true,
+            'message' => 'Đã tạo job gửi tin vào nhóm.',
+            'sent' => 1,
+            'failed' => 0,
+        ];
+    }
+
+
     public function sendMessageToUsers(array $userIds, string $message): array
     {
-        $sent = 0;
-        $failed = 0;
-        $errors = [];
+        $dispatched = 0;
 
         $users = $this->userRepository
             ->findWhereIn('id', $userIds)
@@ -89,24 +112,16 @@ class TelegramService
         }
 
         foreach ($users as $user) {
-            $result = $this->sendMessage($user->telegram_id, $message);
-
-            if ($result['success']) {
-                $sent++;
-            } else {
-                $failed++;
-                $errors[] = "{$user->name}: {$result['message']}";
-            }
-
-            usleep(100000);
+            SendTelegramMessage::dispatch($user->telegram_id, $message);
+            $dispatched++;
         }
 
         return [
-            'success' => $sent > 0,
-            'message' => "Đã gửi: {$sent}, Thất bại: {$failed}",
-            'sent' => $sent,
-            'failed' => $failed,
-            'errors' => $errors,
+            'success' => $dispatched > 0,
+            'message' => "Đã đẩy {$dispatched} job gửi tin.",
+            'sent' => $dispatched,
+            'failed' => 0,
+            'errors' => [],
         ];
     }
 
@@ -114,7 +129,7 @@ class TelegramService
     protected function parseErrorMessage(string $error): string
     {
         if (str_contains($error, 'chat not found')) {
-            return 'Chat không tồn tại. User cần chat với bot trước.';
+            return 'Chat không tồn tại. Chưa có chat hoặc sai ID chat.';
         }
 
         if (str_contains($error, 'bot was blocked')) {

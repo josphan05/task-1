@@ -84,7 +84,7 @@ class UserService extends BaseService
             'name' => $data['name'],
             'email' => $data['email'],
             'password' => Hash::make($data['password']),
-            'telegram_id' => $data['telegram_id'],
+            'telegram_id' => $data['telegram_id'] ?? null,
             'status' => $data['status'] ?? 'active',
         ]);
     }
@@ -101,7 +101,7 @@ class UserService extends BaseService
         $updateData = [
             'name' => $data['name'],
             'email' => $data['email'],
-            'telegram_id' => $data['telegram_id'],
+            'telegram_id' => $data['telegram_id'] ?? null,
             'status' => $data['status'] ?? 'active',
         ];
 

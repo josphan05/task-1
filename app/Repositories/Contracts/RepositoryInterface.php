@@ -83,6 +83,26 @@ interface RepositoryInterface
     public function findWhereIn(string $field, array $values, array $columns = ['*']): Collection;
 
     /**
+     * Add a basic where clause to the query.
+     *
+     * @param string|array $column
+     * @param mixed $operator
+     * @param mixed $value
+     * @return self
+     */
+    public function where(string|array $column, mixed $operator = null, mixed $value = null): self;
+
+    /**
+     * Add an "or where" clause to the query.
+     *
+     * @param string|array $column
+     * @param mixed $operator
+     * @param mixed $value
+     * @return self
+     */
+    public function orWhere(string|array $column, mixed $operator = null, mixed $value = null): self;
+
+    /**
      * Create new record
      *
      * @param array $data

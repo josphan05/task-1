@@ -3,9 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Repositories\Contracts\UserRepositoryInterface;
+use App\Http\Requests\Telegram\TelegramSendRequest;
 use App\Services\TelegramService;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class TelegramController extends Controller
@@ -28,23 +28,16 @@ class TelegramController extends Controller
         return view('telegram.index', compact('users'));
     }
 
-    public function send(Request $request): RedirectResponse
+    public function send(TelegramSendRequest $request): RedirectResponse
     {
-        $validated = $request->validate([
-            'user_ids' => ['required', 'array', 'min:1'],
-            'user_ids.*' => ['exists:users,id'],
-            'message' => ['required', 'string', 'min:1', 'max:4096'],
-        ], [
-            'user_ids.required' => 'Vui lòng chọn ít nhất một người dùng.',
-            'user_ids.min' => 'Vui lòng chọn ít nhất một người dùng.',
-            'message.required' => 'Vui lòng nhập nội dung tin nhắn.',
-            'message.max' => 'Tin nhắn không được vượt quá 4096 ký tự.',
-        ]);
+        $validated = $request->validated();
 
-        $result = $this->telegramService->sendMessageToUsers(
-            $validated['user_ids'],
-            $validated['message']
-        );
+        $result = $validated['target_type'] === 'chatgroup'
+            ? $this->telegramService->sendMessageToGroup($validated['message'])
+            : $this->telegramService->sendMessageToUsers(
+                $validated['user_ids'],
+                $validated['message']
+            );
 
         if ($result['success']) {
             return redirect()

@@ -18,50 +18,78 @@
                 <strong>Gửi tin nhắn Telegram</strong>
             </div>
             <div class="card-body">
-                <form action="{{ route('telegram.send') }}" method="POST">
+                <form action="{{ route('telegram.send') }}" method="POST" novalidate>
                     @csrf
                     <div class="mb-4">
-                        @if($users->count() > 0)
-                        @php
-                            $userOptions = $users->map(function($user) {
-                                return [
-                                    'id' => $user->id,
-                                    'name' => $user->name,
-                                    'avatar' => 'https://ui-avatars.com/api/?name=' . urlencode($user->name) . '&background=321fdb&color=fff&size=32',
-                                    'meta' => $user->telegram_id,
-                                ];
-                            })->toArray();
-                        @endphp
-
-                        <x-select2
-                            name="user_ids"
-                            id="user_ids"
-                            label="Chọn người nhận"
-                            :options="$userOptions"
-                            :multiple="true"
-                            :show-select-all="true"
-                            :required="true"
-                            placeholder="Tìm kiếm và chọn người nhận..."
-                        />
-
-                        <div class="form-text mt-2">
-                            <i class="bi bi-info-circle me-1"></i>
-                            Đã chọn: <strong id="selectedCount">0</strong> / {{ $users->count() }} người dùng
-                        </div>
-                        @else
                         <label class="form-label fw-semibold">
-                            <i class="bi bi-people me-1"></i> Chọn người nhận <span class="text-danger">*</span>
+                            <i class="bi bi-diagram-3 me-1"></i> Kiểu gửi <span class="text-danger">*</span>
                         </label>
-                        <div class="alert alert-warning">
-                            <i class="bi bi-exclamation-triangle me-2"></i>
-                            Không có người dùng nào có Telegram ID.
-                            <a href="{{ route('users.index') }}">Cập nhật thông tin người dùng</a>
+                        <div class="d-flex gap-3">
+                            <div class="form-check">
+                                <input class="form-check-input"
+                                       type="radio"
+                                       name="target_type"
+                                       id="target_type_users"
+                                       value="users"
+                                       {{ old('target_type', 'users') === 'users' ? 'checked' : '' }}>
+                                <label class="form-check-label" for="target_type_users">
+                                    Gửi cho người dùng
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input"
+                                       type="radio"
+                                       name="target_type"
+                                       id="target_type_chatgroup"
+                                       value="chatgroup"
+                                       {{ old('target_type') === 'chatgroup' ? 'checked' : '' }}>
+                                <label class="form-check-label" for="target_type_chatgroup">
+                                    Gửi vào nhóm
+                                </label>
+                            </div>
                         </div>
-                        @endif
+                    </div>
+                    <div class="mb-4">
+                        <div id="user-select-wrapper">
+                            @if($users->count() > 0)
+                            @php
+                                $userOptions = $users->map(function($user) {
+                                    return [
+                                        'id' => $user->id,
+                                        'name' => $user->name,
+                                        'avatar' => 'https://ui-avatars.com/api/?name=' . urlencode($user->name) . '&background=321fdb&color=fff&size=32',
+                                        'meta' => $user->telegram_id,
+                                    ];
+                                })->toArray();
+                            @endphp
 
-                        @error('user_ids')
-                        <div class="invalid-feedback d-block">{{ $message }}</div>
-                        @enderror
+                            <x-select2
+                                name="user_ids"
+                                id="user_ids"
+                                label="Chọn người nhận"
+                                :options="$userOptions"
+                                :multiple="true"
+                                :show-select-all="true"
+                                :required="true"
+                                placeholder="Tìm kiếm và chọn người nhận..."
+                            />
+
+                            <div class="form-text mt-2">
+                                <i class="bi bi-info-circle me-1"></i>
+                                Đã chọn: <strong id="selectedCount">0</strong> / {{ $users->count() }} người dùng
+                            </div>
+                            @else
+                            <label class="form-label fw-semibold">
+                                <i class="bi bi-people me-1"></i> Chọn người nhận <span class="text-danger">*</span>
+                            </label>
+                            <div class="alert alert-warning mb-0">
+                                <i class="bi bi-exclamation-triangle me-2"></i>
+                                Không có người dùng nào có Telegram ID.
+                                <a href="{{ route('users.index') }}">Cập nhật thông tin người dùng</a>
+                            </div>
+                            @endif
+                        </div>
+
                     </div>
 
                     <!-- Nội dung tin nhắn -->
@@ -78,19 +106,11 @@
                         @error('message')
                         <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
-                        <div class="form-text">
-                            <span id="charCount">0</span>/4096 ký tự. Hỗ trợ HTML formatting.
-                        </div>
                     </div>
-
                     <hr>
-
                     <div class="d-flex gap-2">
-                        <button type="submit" class="btn btn-primary" {{ $users->count() == 0 ? 'disabled' : '' }}>
+                        <button type="submit" class="btn btn-primary">
                             <i class="bi bi-send me-1"></i> Gửi tin nhắn
-                        </button>
-                        <button type="button" class="btn btn-secondary" id="resetBtn">
-                            <i class="bi bi-arrow-counterclockwise me-1"></i> Làm mới
                         </button>
                     </div>
                 </form>
@@ -99,59 +119,90 @@
     </div>
 </div>
 
+@endsection
+
 @push('scripts')
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const select = document.getElementById('user_ids');
-    const selectedCountEl = document.getElementById('selectedCount');
+    $(function () {
+        const $form = $('form[action="{{ route('telegram.send') }}"]');
+        const $userIds = $('#user_ids');
+        const $userSelectWrapper = $('#user-select-wrapper');
 
-    // Update selected count
-    if (select) {
-        select.addEventListener('change', function() {
-            const selected = Array.from(this.selectedOptions).map(opt => opt.value);
-            if (selectedCountEl) {
-                selectedCountEl.textContent = selected.length;
+        function toggleUserSelect() {
+            const targetType = $('input[name="target_type"]:checked').val();
+
+            if (targetType === 'chatgroup') {
+                $userSelectWrapper.slideUp(100);
+                $userIds.prop('required', false).val(null).trigger('change');
+                $userIds.removeClass('is-invalid');
+                $userIds.closest('.select2-wrapper').find('.invalid-feedback').remove();
+                $userIds.valid();
+            } else {
+                $userSelectWrapper.slideDown(100);
+                $userIds.prop('required', true);
             }
+        }
+
+        $('input[name="target_type"]').on('change', function() {
+            toggleUserSelect();
         });
 
-        // Initial count
-        const selected = Array.from(select.selectedOptions).map(opt => opt.value);
-        if (selectedCountEl) {
-            selectedCountEl.textContent = selected.length;
-        }
-    }
+        toggleUserSelect();
 
-    // Reset button
-    const resetBtn = document.getElementById('resetBtn');
-    if (resetBtn) {
-        resetBtn.addEventListener('click', function() {
-            if (select) {
-                Array.from(select.options).forEach(opt => opt.selected = false);
-                select.dispatchEvent(new Event('change'));
-            }
-            const messageInput = document.getElementById('message');
-            if (messageInput) {
-                messageInput.value = '';
-                const charCount = document.getElementById('charCount');
-                if (charCount) {
-                    charCount.textContent = '0';
+        $form.validate({
+            onfocusout: function (element) {
+                this.element(element);
+            },
+            onkeyup: false,
+            rules: {
+                target_type: { required: true },
+                user_ids: {
+                    required: {
+                        depends: function() {
+                            return $('input[name="target_type"]:checked').val() === 'users';
+                        }
+                    }
+                },
+                message: {
+                    required: true,
+                    minlength: 1,
+                    maxlength: 4096
+                }
+            },
+            messages: {
+                target_type: 'Vui lòng chọn kiểu gửi.',
+                user_ids: {
+                    required: 'Vui lòng chọn ít nhất một người nhận.'
+                },
+                message: {
+                    required: 'Vui lòng nhập nội dung tin nhắn.',
+                    minlength: 'Nội dung tin nhắn không được để trống.',
+                    maxlength: 'Nội dung tin nhắn không được vượt quá 4096 ký tự.'
+                }
+            },
+            errorElement: 'div',
+            errorClass: 'invalid-feedback',
+            highlight: function (element) {
+                $(element).addClass('is-invalid');
+            },
+            unhighlight: function (element) {
+                $(element).removeClass('is-invalid');
+            },
+            errorPlacement: function (error, element) {
+                if (element.attr('type') === 'radio') {
+                    error.appendTo(element.closest('.mb-4'));
+                } else if (element.attr('id') === 'user_ids' || element.hasClass('form-multi-select')) {
+                    const $wrapper = element.closest('.select2-wrapper');
+                    if ($wrapper.length) {
+                        error.insertAfter($wrapper);
+                    } else {
+                        error.insertAfter(element.closest('.select2-container').parent() || element);
+                    }
+                } else {
+                    error.insertAfter(element);
                 }
             }
         });
-    }
-
-    // Character count
-    const messageInput = document.getElementById('message');
-    const charCount = document.getElementById('charCount');
-
-    if (messageInput && charCount) {
-        messageInput.addEventListener('input', function() {
-            charCount.textContent = this.value.length;
-            charCount.classList.toggle('text-danger', this.value.length > 4000);
-        });
-        charCount.textContent = messageInput.value.length;
-    }
-});
+    });
 </script>
 @endpush
-@endsection
