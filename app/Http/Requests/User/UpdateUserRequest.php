@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\User;
 
+use App\Enums\UserStatus;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateUserRequest extends FormRequest
@@ -28,7 +29,8 @@ class UpdateUserRequest extends FormRequest
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email,' . $userId],
             'password' => ['nullable', 'string', 'min:6'],
             'telegram_id' => ['nullable', 'string', 'max:255'],
-            'status' => ['required', 'in:active,inactive'],
+            'telegram_username' => ['nullable', 'string', 'max:255'],
+            'status' => ['required', 'in:' . implode(',', UserStatus::values())],
         ];
     }
 
@@ -48,6 +50,7 @@ class UpdateUserRequest extends FormRequest
             'email.unique' => 'Email này đã được sử dụng.',
             'password.min' => 'Mật khẩu phải có ít nhất :min ký tự.',
             'telegram_id.max' => 'Telegram ID không được vượt quá :max ký tự.',
+            'telegram_username.max' => 'Telegram Username không được vượt quá :max ký tự.',
             'status.required' => 'Vui lòng chọn trạng thái.',
             'status.in' => 'Trạng thái không hợp lệ.',
         ];
@@ -65,6 +68,7 @@ class UpdateUserRequest extends FormRequest
             'email' => 'email',
             'password' => 'mật khẩu',
             'telegram_id' => 'Telegram ID',
+            'telegram_username' => 'Telegram Username',
             'status' => 'trạng thái',
         ];
     }

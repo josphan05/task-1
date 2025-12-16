@@ -150,7 +150,7 @@
                                 </td>
                                 <td>{{ $user->email }}</td>
                                 <td>
-                                    @if ($user->status === 'active')
+                                    @if ($user->isActive())
                                         <span class="badge bg-success">Hoạt động</span>
                                     @else
                                         <span class="badge bg-secondary">Không hoạt động</span>

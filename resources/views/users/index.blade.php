@@ -99,7 +99,7 @@
                                     </a>
                                 </td>
                                 <td>
-                                    @if ($user->status === 'active')
+                                    @if ($user->isActive())
                                         <span class="badge rounded-pill bg-success">
                                             <i class="bi bi-check-circle me-1"></i> Hoạt động
                                         </span>

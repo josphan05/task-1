@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\UserStatus;
 use App\Models\User;
 use App\Repositories\Contracts\UserRepositoryInterface;
 use Illuminate\Database\Eloquent\Collection;
@@ -85,7 +86,8 @@ class UserService extends BaseService
             'email' => $data['email'],
             'password' => Hash::make($data['password']),
             'telegram_id' => $data['telegram_id'] ?? null,
-            'status' => $data['status'] ?? 'active',
+            'telegram_username' => $data['telegram_username'] ?? null,
+            'status' => isset($data['status']) ? UserStatus::from($data['status']) : UserStatus::ACTIVE,
         ]);
     }
 
@@ -102,7 +104,8 @@ class UserService extends BaseService
             'name' => $data['name'],
             'email' => $data['email'],
             'telegram_id' => $data['telegram_id'] ?? null,
-            'status' => $data['status'] ?? 'active',
+            'telegram_username' => $data['telegram_username'] ?? null,
+            'status' => isset($data['status']) ? UserStatus::from($data['status']) : UserStatus::ACTIVE,
         ];
 
         // Update password if provided
@@ -175,7 +178,7 @@ class UserService extends BaseService
     public function activateUser(int|string $id): User
     {
         return $this->repository->update($id, [
-            'status' => 'active',
+            'status' => UserStatus::ACTIVE,
         ]);
     }
 
@@ -188,7 +191,7 @@ class UserService extends BaseService
     public function deactivateUser(int|string $id): User
     {
         return $this->repository->update($id, [
-            'status' => 'inactive',
+            'status' => UserStatus::INACTIVE,
         ]);
     }
 

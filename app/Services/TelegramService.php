@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Jobs\SendTelegramMessage;
+use App\Models\User;
 use App\Repositories\Contracts\UserRepositoryInterface;
 use GuzzleHttp\Client;
 use Illuminate\Database\Eloquent\Collection;
@@ -37,7 +38,6 @@ class TelegramService
             'chat_id' => $chatId,
             'message_length' => strlen($message),
         ]);
-
         try {
             $cleanMessage = htmlspecialchars($message, ENT_QUOTES, 'UTF-8');
             $response = $this->telegram->sendMessage([
@@ -71,7 +71,7 @@ class TelegramService
 
     public function sendMessageToGroup(string $message): array
     {
-        $chatId = env('TELEGRAM_GROUP_ID');
+        $chatId = config('telegram.bots.mybot.group_id');
 
         if (empty($chatId)) {
             return [
@@ -81,8 +81,18 @@ class TelegramService
             ];
         }
 
-        SendTelegramMessage::dispatch($chatId, $message);
+        $users = $this->userRepository
+            ->all(['telegram_username'])
+            ->filter(function ($user) {
+                return !empty($user->telegram_username);
+            });
 
+        if ($users->isNotEmpty()) {
+            foreach($users as $user){
+                $formattedMessage = $user->telegram_username . "\n" . $message;
+                SendTelegramMessage::dispatch($chatId, $formattedMessage);
+            }
+        }
         return [
             'success' => true,
             'message' => 'Đã tạo job gửi tin vào nhóm.',
@@ -142,6 +152,14 @@ class TelegramService
 
         if (str_contains($error, 'Too Many Requests')) {
             return 'Gửi quá nhiều tin nhắn. Vui lòng thử lại sau.';
+        }
+
+        if (str_contains($error, 'not enough rights')) {
+            return 'Bot không có quyền admin trong group.';
+        }
+
+        if (str_contains($error, 'user not found')) {
+            return 'Không tìm thấy user trong group.';
         }
 
         return $error;

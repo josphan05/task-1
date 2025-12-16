@@ -56,6 +56,18 @@
                                 @enderror
                             </div>
                             <div class="col-md-6 mb-3">
+                                <label for="status" class="form-label">Trạng thái <span
+                                        class="text-danger">*</span></label>
+                                <select class="form-select @error('status') is-invalid @enderror" id="status"
+                                    name="status">
+                                    <option value="active" {{ old('status', 'active') == 'active' ? 'selected' : '' }}>Hoạt động</option>
+                                    <option value="inactive" {{ old('status') == 'inactive' ? 'selected' : '' }}>Không hoạt động</option>
+                                </select>
+                                @error('status')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                            <div class="col-md-6 mb-3">
                                 <label for="telegram_id" class="form-label">Telegram id</label>
                                 <input type="text" class="form-control @error('telegram_id') is-invalid @enderror"
                                     id="telegram_id" name="telegram_id" value="{{ old('telegram_id') }}"
@@ -65,19 +77,15 @@
                                 @enderror
                             </div>
                             <div class="col-md-6 mb-3">
-                                <label for="status" class="form-label">Trạng thái <span
-                                        class="text-danger">*</span></label>
-                                <select class="form-select @error('status') is-invalid @enderror" id="status"
-                                    name="status">
-                                    <option value="active" {{ old('status', 'active') == 'active' ? 'selected' : '' }}>Hoạt
-                                        động</option>
-                                    <option value="inactive" {{ old('status') == 'inactive' ? 'selected' : '' }}>Không hoạt
-                                        động</option>
-                                </select>
-                                @error('status')
+                                <label for="telegram_username" class="form-label">Telegram Username</label>
+                                <input type="text" class="form-control @error('telegram_username') is-invalid @enderror"
+                                    id="telegram_username" name="telegram_username" value="{{ old('telegram_username') }}"
+                                    placeholder="telegram_username">
+                                @error('telegram_username')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
+
                         </div>
 
                         <hr>
@@ -134,7 +142,13 @@
                 name: { required: true, minlength: 2 },
                 email: { required: true, email: true },
                 password: { required: true, minlength: 6 },
-                status: { required: true }
+                status: { required: true },
+                telegram_id: {
+                    maxlength: 255
+                },
+                telegram_username: {
+                    maxlength: 255
+                }
             },
             messages: {
                 name: {
@@ -149,7 +163,13 @@
                     required: 'Vui lòng nhập mật khẩu.',
                     minlength: 'Mật khẩu phải có ít nhất 6 ký tự.'
                 },
-                status: 'Vui lòng chọn trạng thái.'
+                status: 'Vui lòng chọn trạng thái.',
+                telegram_id: {
+                    maxlength: 'Telegram ID không được vượt quá 255 ký tự.'
+                },
+                telegram_username: {
+                    maxlength: 'Telegram Username không được vượt quá 255 ký tự.'
+                }
             },
             errorElement: 'div',
             errorClass: 'invalid-feedback',

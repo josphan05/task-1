@@ -3,10 +3,11 @@
 use Telegram\Bot\Commands\HelpCommand;
 
 return [
-   
+
     'bots' => [
         'mybot' => [
             'token' => env('TELEGRAM_BOT_TOKEN', 'YOUR-BOT-TOKEN'),
+            'group_id' => env('TELEGRAM_GROUP_ID', 'YOUR-GROUP-ID'),
             'certificate_path' => env('TELEGRAM_CERTIFICATE_PATH', 'YOUR-CERTIFICATE-PATH'),
             'webhook_url' => env('TELEGRAM_WEBHOOK_URL', 'YOUR-BOT-WEBHOOK-URL'),
             /*

@@ -23,7 +23,6 @@ class SendTelegramMessage implements ShouldQueue
     public function handle(): void
     {
         $service = app(TelegramService::class);
-
         $result = $service->sendMessage($this->chatId, $this->message, $this->parseMode);
 
         if (!$result['success']) {

@@ -57,6 +57,21 @@
                                 @enderror
                             </div>
                             <div class="col-md-6 mb-3">
+                                <label for="status" class="form-label">Trạng thái <span
+                                        class="text-danger">*</span></label>
+                                <select class="form-select @error('status') is-invalid @enderror" id="status"
+                                    name="status">
+                                    <option value="active"
+                                        {{ old('status', $user->status->value) == 'active' ? 'selected' : '' }}>Hoạt động</option>
+                                    <option value="inactive"
+                                        {{ old('status', $user->status->value) == 'inactive' ? 'selected' : '' }}>Không hoạt động
+                                    </option>
+                                </select>
+                                @error('status')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                            <div class="col-md-6 mb-3">
                                 <label for="telegram_id" class="form-label">Telegram id</label>
                                 <input type="text" class="form-control @error('telegram_id') is-invalid @enderror"
                                     id="telegram_id" name="telegram_id" value="{{ old('telegram_id', $user->telegram_id) }}"
@@ -66,17 +81,11 @@
                                 @enderror
                             </div>
                             <div class="col-md-6 mb-3">
-                                <label for="status" class="form-label">Trạng thái <span
-                                        class="text-danger">*</span></label>
-                                <select class="form-select @error('status') is-invalid @enderror" id="status"
-                                    name="status">
-                                    <option value="active"
-                                        {{ old('status', $user->status) == 'active' ? 'selected' : '' }}>Hoạt động</option>
-                                    <option value="inactive"
-                                        {{ old('status', $user->status) == 'inactive' ? 'selected' : '' }}>Không hoạt động
-                                    </option>
-                                </select>
-                                @error('status')
+                                <label for="telegram_username" class="form-label">Telegram Username</label>
+                                <input type="text" class="form-control @error('telegram_username') is-invalid @enderror"
+                                    id="telegram_username" name="telegram_username" value="{{ old('telegram_username', $user->telegram_username) }}"
+                                    placeholder="telegram_username">
+                                @error('telegram_username')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
@@ -112,7 +121,7 @@
                     <h5 class="mb-1">{{ $user->name }}</h5>
                     <p class="text-muted mb-3">{{ $user->email }}</p>
 
-                    @if ($user->status === 'active')
+                    @if ($user->isActive())
                         <span class="badge bg-success">
                             <i class="bi bi-check-circle me-1"></i> Hoạt động
                         </span>
@@ -172,7 +181,15 @@
                         }
                     }
                 },
-                status: { required: true }
+                status: { required: true },
+                telegram_id: {
+                    required: false,
+                    maxlength: 255
+                },
+                telegram_username: {
+                    required: false,
+                    maxlength: 255
+                }
             },
             messages: {
                 name: {
@@ -187,7 +204,13 @@
                     required: 'Nếu đổi mật khẩu, vui lòng nhập mật khẩu mới.',
                     minlength: 'Mật khẩu phải có ít nhất 6 ký tự.'
                 },
-                status: 'Vui lòng chọn trạng thái.'
+                status: 'Vui lòng chọn trạng thái.',
+                telegram_id: {
+                    maxlength: 'Telegram ID không được vượt quá 255 ký tự.'
+                },
+                telegram_username: {
+                    maxlength: 'Telegram Username không được vượt quá 255 ký tự.'
+                }
             },
             errorElement: 'div',
             errorClass: 'invalid-feedback',

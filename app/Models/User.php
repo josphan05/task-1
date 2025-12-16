@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\UserStatus;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -21,6 +22,7 @@ class User extends Authenticatable
         'email',
         'password',
         'telegram_id',
+        'telegram_username',
         'status',
     ];
 
@@ -43,6 +45,7 @@ class User extends Authenticatable
     {
         return [
             'password' => 'hashed',
+            'status' => UserStatus::class,
         ];
     }
 
@@ -51,6 +54,6 @@ class User extends Authenticatable
      */
     public function isActive(): bool
     {
-        return $this->status === 'active';
+        return $this->status === UserStatus::ACTIVE;
     }
 }

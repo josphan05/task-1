@@ -2,6 +2,7 @@
 
 namespace App\Repositories\Eloquent;
 
+use App\Enums\UserStatus;
 use App\Models\User;
 use App\Repositories\Contracts\UserRepositoryInterface;
 use Illuminate\Database\Eloquent\Collection;
@@ -20,12 +21,12 @@ class UserRepository extends BaseRepository implements UserRepositoryInterface
 
     public function getActiveUsers(): Collection
     {
-        return $this->model->where('status', 'active')->get();
+        return $this->model->where('status', UserStatus::ACTIVE)->get();
     }
 
     public function getInactiveUsers(): Collection
     {
-        return $this->model->where('status', 'inactive')->get();
+        return $this->model->where('status', UserStatus::INACTIVE)->get();
     }
 
     public function search(string $keyword): Collection

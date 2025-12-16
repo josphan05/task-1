@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\UserStatus;
 use App\Repositories\Contracts\UserRepositoryInterface;
 use App\Http\Requests\Telegram\TelegramSendRequest;
 use App\Services\TelegramService;
@@ -20,7 +21,7 @@ class TelegramController extends Controller
         $users = $this->userRepository
             ->all(['id', 'name', 'telegram_id', 'status'])
             ->filter(function ($user) {
-                return $user->status === 'active' && !empty($user->telegram_id);
+                return $user->status === UserStatus::ACTIVE && !empty($user->telegram_id);
             })
             ->sortBy('name')
             ->values();

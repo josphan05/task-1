@@ -23,7 +23,7 @@
                     <h4 class="mb-1">{{ $user->name }}</h4>
                     <p class="text-muted">{{ $user->email }}</p>
 
-                    @if ($user->status === 'active')
+                    @if ($user->isActive())
                         <span class="badge bg-success mb-3">
                             <i class="bi bi-check-circle me-1"></i> Hoạt động
                         </span>
@@ -71,7 +71,7 @@
                             <tr>
                                 <th>Trạng thái</th>
                                 <td>
-                                    @if ($user->status === 'active')
+                                    @if ($user->isActive())
                                         <span class="text-success">
                                             <i class="bi bi-check-circle me-1"></i> Hoạt động
                                         </span>

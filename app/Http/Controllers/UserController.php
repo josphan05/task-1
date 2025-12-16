@@ -45,7 +45,7 @@ class UserController extends Controller
         $user = $this->userService->createUser($request->validated());
 
         return redirect()
-            ->route('users.index')
+            ->back()
             ->with('success', "Người dùng {$user->name} đã được tạo thành công.");
     }
 
@@ -74,7 +74,7 @@ class UserController extends Controller
         $this->userService->updateUser($user->id, $request->validated());
 
         return redirect()
-            ->route('users.index')
+            ->back()
             ->with('success', "Người dùng {$user->name} đã được cập nhật thành công.");
     }
 
