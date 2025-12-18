@@ -32,19 +32,28 @@ class TelegramService
     }
 
 
-    public function sendMessage(string $chatId, string $message, string $parseMode = 'HTML'): array
+    public function sendMessageWithMarkup(string $chatId, string $message, string $parseMode = 'HTML', ?string $replyMarkupJson = null): array
     {
-        Log::info('Telegram sendMessage', [
+        Log::info('Telegram sendMessageWithMarkup', [
             'chat_id' => $chatId,
             'message_length' => strlen($message),
+            'has_markup' => !empty($replyMarkupJson),
         ]);
         try {
             $cleanMessage = htmlspecialchars($message, ENT_QUOTES, 'UTF-8');
-            $response = $this->telegram->sendMessage([
+
+            $params = [
                 'chat_id' => $chatId,
                 'text' => $cleanMessage,
                 'parse_mode' => $parseMode,
-            ]);
+            ];
+
+            // Add reply markup if provided
+            if (!empty($replyMarkupJson)) {
+                $params['reply_markup'] = $replyMarkupJson;
+            }
+
+            $response = $this->telegram->sendMessage($params);
 
             Log::info('Telegram message sent successfully', ['response' => $response]);
 
@@ -54,7 +63,7 @@ class TelegramService
                 'data' => $response,
             ];
         } catch (TelegramSDKException $e) {
-            Log::error('Telegram sendMessage error', [
+            Log::error('Telegram sendMessageWithMarkup error', [
                 'chat_id' => $chatId,
                 'error' => $e->getMessage(),
                 'code' => $e->getCode(),
@@ -68,8 +77,41 @@ class TelegramService
         }
     }
 
+    /**
+     * Build inline keyboard markup from button array
+     */
+    protected function buildInlineKeyboard(array $buttons): array
+    {
+        $keyboard = [];
 
-    public function sendMessageToGroup(string $message): array
+        foreach ($buttons as $row) {
+            $keyboardRow = [];
+
+            foreach ($row as $button) {
+                if (empty($button['text'])) {
+                    continue;
+                }
+
+                $btn = ['text' => $button['text']];
+
+                if ($button['type'] === 'url' && !empty($button['value'])) {
+                    $btn['url'] = $button['value'];
+                } elseif ($button['type'] === 'callback' && !empty($button['value'])) {
+                    $btn['callback_data'] = $button['value'];
+                }
+
+                $keyboardRow[] = $btn;
+            }
+
+            if (!empty($keyboardRow)) {
+                $keyboard[] = $keyboardRow;
+            }
+        }
+
+        return ['inline_keyboard' => $keyboard];
+    }
+
+    public function sendMessageToGroup(string $message, ?array $buttons = null): array
     {
         $chatId = config('telegram.bots.mybot.group_id');
 
@@ -87,10 +129,13 @@ class TelegramService
                 return !empty($user->telegram_username);
             });
 
+
+        $replyMarkupJson = !empty($buttons) ? json_encode($this->buildInlineKeyboard($buttons)) : null;
+
         if ($users->isNotEmpty()) {
             foreach($users as $user){
                 $formattedMessage = $user->telegram_username . "\n" . $message;
-                SendTelegramMessage::dispatch($chatId, $formattedMessage);
+                SendTelegramMessage::dispatch($chatId, $formattedMessage, $replyMarkupJson);
             }
         }
         return [
@@ -102,7 +147,7 @@ class TelegramService
     }
 
 
-    public function sendMessageToUsers(array $userIds, string $message): array
+    public function sendMessageToUsers(array $userIds, string $message, ?array $buttons = null): array
     {
         $dispatched = 0;
 
@@ -121,8 +166,10 @@ class TelegramService
             ];
         }
 
+        $replyMarkupJson = !empty($buttons) ? json_encode($this->buildInlineKeyboard($buttons)) : null;
+
         foreach ($users as $user) {
-            SendTelegramMessage::dispatch($user->telegram_id, $message);
+            SendTelegramMessage::dispatch($user->telegram_id, $message, $replyMarkupJson);
             $dispatched++;
         }
 
@@ -135,6 +182,91 @@ class TelegramService
         ];
     }
 
+
+    public function answerCallbackQuery(string $callbackQueryId, ?string $text = null, bool $showAlert = false): bool
+    {
+        try {
+            $params = [
+                'callback_query_id' => $callbackQueryId,
+                'show_alert' => $showAlert,
+            ];
+
+            if ($text) {
+                $params['text'] = $text;
+            }
+
+            $this->telegram->answerCallbackQuery($params);
+
+            return true;
+        } catch (TelegramSDKException $e) {
+            Log::error('Failed to answer callback query', [
+                'callback_query_id' => $callbackQueryId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return false;
+        }
+    }
+
+    public function setWebhook(string $url): array
+    {
+        try {
+            $response = $this->telegram->setWebhook([
+                'url' => $url,
+            ]);
+
+            Log::info('Telegram webhook set', ['url' => $url, 'response' => $response]);
+
+            return [
+                'success' => true,
+                'message' => 'Webhook đã được cài đặt thành công!',
+            ];
+        } catch (TelegramSDKException $e) {
+            Log::error('Failed to set webhook', [
+                'url' => $url,
+                'error' => $e->getMessage(),
+            ]);
+
+            return [
+                'success' => false,
+                'message' => 'Lỗi: ' . $e->getMessage(),
+            ];
+        }
+    }
+
+    public function removeWebhook(): array
+    {
+        try {
+            $this->telegram->removeWebhook();
+
+            return [
+                'success' => true,
+                'message' => 'Webhook đã được gỡ bỏ!',
+            ];
+        } catch (TelegramSDKException $e) {
+            return [
+                'success' => false,
+                'message' => 'Lỗi: ' . $e->getMessage(),
+            ];
+        }
+    }
+
+    public function getWebhookInfo(): array
+    {
+        try {
+            $info = $this->telegram->getWebhookInfo();
+
+            return [
+                'success' => true,
+                'data' => $info,
+            ];
+        } catch (TelegramSDKException $e) {
+            return [
+                'success' => false,
+                'message' => 'Lỗi: ' . $e->getMessage(),
+            ];
+        }
+    }
 
     protected function parseErrorMessage(string $error): string
     {

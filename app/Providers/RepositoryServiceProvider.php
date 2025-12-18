@@ -13,7 +13,8 @@ class RepositoryServiceProvider extends ServiceProvider
      */
     public array $bindings = [
         \App\Repositories\Contracts\UserRepositoryInterface::class => \App\Repositories\Eloquent\UserRepository::class,
-        // Add more repository bindings here
+        \App\Repositories\Contracts\TelegramCallbackRepositoryInterface::class => \App\Repositories\Eloquent\TelegramCallbackRepository::class,
+        \App\Repositories\Contracts\TelegramMessageRepositoryInterface::class => \App\Repositories\Eloquent\TelegramMessageRepository::class,
     ];
 
     /**

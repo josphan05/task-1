@@ -4,6 +4,7 @@ namespace App\Http\Requests\User;
 
 use App\Enums\UserStatus;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 
 class StoreUserRequest extends FormRequest
@@ -29,7 +30,7 @@ class StoreUserRequest extends FormRequest
             'password' => ['required', 'string', 'min:6'],
             'telegram_id' => ['nullable', 'string', 'max:255'],
             'telegram_username' => ['nullable', 'string', 'max:255'],
-            'status' => ['required', 'in:' . implode(',', UserStatus::values())],
+            'status' => ['required', Rule::enum(UserStatus::class)],
         ];
     }
 

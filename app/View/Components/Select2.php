@@ -30,4 +30,3 @@ class Select2 extends Component
         return view('components.select2');
     }
 }
-

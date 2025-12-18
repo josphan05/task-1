@@ -150,5 +150,14 @@ interface RepositoryInterface
      * @return int
      */
     public function count(): int;
+
+    /**
+     * Update or create a record
+     *
+     * @param array $attributes
+     * @param array $values
+     * @return Model
+     */
+    public function updateOrCreate(array $attributes, array $values = []): Model;
 }
 

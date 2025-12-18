@@ -132,12 +132,7 @@
 <script>
     $(function () {
         const $form = $('form[action="{{ route('users.store') }}"]');
-
-        $form.validate({
-            onfocusout: function (element) {
-                this.element(element);
-            },
-            onkeyup: false,
+        window.ValidationConfig.init($form, {
             rules: {
                 name: { required: true, minlength: 2 },
                 email: { required: true, email: true },
@@ -169,23 +164,6 @@
                 },
                 telegram_username: {
                     maxlength: 'Telegram Username không được vượt quá 255 ký tự.'
-                }
-            },
-            errorElement: 'div',
-            errorClass: 'invalid-feedback',
-            highlight: function (element) {
-                $(element).addClass('is-invalid');
-            },
-            unhighlight: function (element) {
-                $(element).removeClass('is-invalid');
-            },
-            errorPlacement: function (error, element) {
-                if (element.attr('type') === 'checkbox' || element.attr('type') === 'radio') {
-                    error.appendTo(element.closest('.mb-3'));
-                } else if (element.attr('id') === 'password') {
-                    error.insertAfter(element.closest('.form-password'));
-                } else {
-                    error.insertAfter(element);
                 }
             }
         });

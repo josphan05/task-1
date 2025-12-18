@@ -1,165 +1,46 @@
 /**
  * Select2 Component Auto-Init
- * Tự động khởi tạo Select2 cho tất cả elements có class 'select2-component'
+ * Sử dụng cấu hình chung từ jquery-config.js
+ *
+ * File này giữ lại để tương thích với các module ES6
+ * Nếu sử dụng jQuery từ CDN, Select2 sẽ tự động khởi tạo qua jquery-config.js
  */
 
-$(document).ready(function() {
-    // Auto init tất cả select2 components
-    initAllSelect2();
-
-    // Bind toggle all buttons
-    bindToggleAllButtons();
-});
-
-/**
- * Init tất cả Select2 components
- */
-function initAllSelect2() {
-    $('.select2-component').each(function() {
-        const $el = $(this);
-        const useUserTemplate = $el.data('user-template') === 'true' || $el.data('user-template') === true;
-
-        const config = {
-            theme: 'bootstrap-5',
-            width: '100%',
-            allowClear: !$el.prop('required'),
-            placeholder: $el.data('placeholder') || 'Chọn...',
-            closeOnSelect: !$el.prop('multiple'),
-            language: {
-                noResults: function() { return "Không tìm thấy kết quả"; },
-                searching: function() { return "Đang tìm..."; },
-                removeAllItems: function() { return "Xóa tất cả"; },
-                removeItem: function() { return "Xóa"; }
-            }
-        };
-
-        // Nếu dùng user template
-        if (useUserTemplate) {
-            config.templateResult = formatUserOption;
-            config.templateSelection = formatUserSelection;
-        }
-
-        $el.select2(config);
-
-        // Update counter nếu có
-        $el.on('change', function() {
-            updateSelectCounter($(this));
-            updateToggleButton($(this));
-        });
-
-        // Initial update
-        updateSelectCounter($el);
-    });
-}
-
-/**
- * Bind sự kiện cho nút Toggle All
- */
-function bindToggleAllButtons() {
-    $(document).on('click', '.select2-toggle-all', function() {
-        const targetId = $(this).data('target');
-        const $select = $('#' + targetId);
-        const $btn = $(this);
-        
-        const totalOptions = $select.find('option').length;
-        const selectedCount = $select.select2('data').length;
-        const allSelected = totalOptions === selectedCount;
-
-        if (allSelected) {
-            // Bỏ chọn tất cả
-            $select.val(null).trigger('change');
-        } else {
-            // Chọn tất cả
-            $select.find('option').prop('selected', true);
-            $select.trigger('change');
+// Nếu jQuery đã được load và có Select2Config
+if (typeof window.Select2Config !== 'undefined') {
+    // Sử dụng cấu hình chung
+    // Select2 đã được khởi tạo tự động bởi jquery-config.js
+    console.log('Select2 sử dụng cấu hình chung từ jquery-config.js');
+} else if (typeof jQuery !== 'undefined' && typeof jQuery.fn.select2 !== 'undefined') {
+    // Fallback: Nếu không có cấu hình chung, khởi tạo trực tiếp
+    jQuery(document).ready(function($) {
+        if (window.Select2Config) {
+            window.Select2Config.initAll();
         }
     });
 }
 
-/**
- * Cập nhật trạng thái nút Toggle
- */
-function updateToggleButton($select) {
-    const id = $select.attr('id');
-    const $btn = $(`.select2-toggle-all[data-target="${id}"]`);
-    
-    if ($btn.length === 0) return;
-
-    const totalOptions = $select.find('option').length;
-    const selectedCount = $select.select2('data').length;
-    const allSelected = totalOptions === selectedCount && totalOptions > 0;
-
-    if (allSelected) {
-        $btn.removeClass('btn-outline-secondary').addClass('btn-outline-danger');
-        $btn.find('i').removeClass('bi-check-all').addClass('bi-x-lg');
-        $btn.find('span').text('Bỏ chọn tất cả');
-    } else {
-        $btn.removeClass('btn-outline-danger').addClass('btn-outline-secondary');
-        $btn.find('i').removeClass('bi-x-lg').addClass('bi-check-all');
-        $btn.find('span').text('Chọn tất cả');
-    }
-}
-
-/**
- * Cập nhật counter cho select
- */
-function updateSelectCounter($select) {
-    const wrapper = $select.closest('.select2-wrapper');
-    const counter = wrapper.find('.select2-counter');
-    
-    if (counter.length > 0) {
-        const count = $select.select2('data').length;
-        counter.find('.count').text(count);
-    }
-}
-
-/**
- * Format user option với avatar
- */
-function formatUserOption(user) {
-    if (!user.id) return user.text;
-    
-    const $option = $(user.element);
-    const avatar = $option.data('avatar') || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.text)}&background=6366f1&color=fff&size=36`;
-    const meta = $option.data('meta') || '';
-    
-    return $(`
-        <div class="select2-user-option">
-            <img src="${avatar}" alt="">
-            <div class="user-info">
-                <span class="user-name">${user.text}</span>
-                ${meta ? `<span class="user-meta">${meta}</span>` : ''}
-            </div>
-        </div>
-    `);
-}
-
-/**
- * Format user selection
- */
-function formatUserSelection(user) {
-    return user.text;
-}
-
-// Export functions để có thể gọi từ bên ngoài
-window.Select2 = {
-    init: initAllSelect2,
+// Export functions để tương thích với code cũ
+// Các hàm này sẽ sử dụng Select2Config nếu có
+window.Select2 = window.Select2 || {
+    init: function(selector) {
+        if (window.Select2Config) {
+            window.Select2Config.initAll(selector);
+        }
+    },
     selectAll: function(selector) {
-        const $el = $(selector);
-        $el.find('option').prop('selected', true);
-        $el.trigger('change');
+        if (window.Select2Config) {
+            window.Select2Config.selectAll(selector);
+        }
     },
     deselectAll: function(selector) {
-        $(selector).val(null).trigger('change');
+        if (window.Select2Config) {
+            window.Select2Config.deselectAll(selector);
+        }
     },
     toggleAll: function(selector) {
-        const $el = $(selector);
-        const total = $el.find('option').length;
-        const selected = $el.select2('data').length;
-        if (total === selected) {
-            this.deselectAll(selector);
-        } else {
-            this.selectAll(selector);
+        if (window.Select2Config) {
+            window.Select2Config.toggleAll(selector);
         }
     }
 };
