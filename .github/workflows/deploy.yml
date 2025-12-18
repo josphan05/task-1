@@ -30,7 +30,7 @@ jobs:
             git pull origin main
 
             echo "👉 Install dependencies"
-            composer install --no-dev --optimize-autoloader
+            /usr/local/bin/php composer.phar install --no-dev --optimize-autoloader
 
             echo "👉 Run migrations"
             php artisan migrate --force
