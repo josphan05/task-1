@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('telegram_conversations', function (Blueprint $table) {
             $table->id();
             $table->bigInteger('telegram_user_id')->index();
-            $table->foreignId('question_set_id')->nullable()->constrained()->nullOnDelete();
+            $table->foreignId('question_set_id')->nullable()->constrained('question_sets')->nullOnDelete();
             $table->string('step')->nullable()->index(); // Lưu field_name của câu hỏi hiện tại
             $table->integer('current_question_order')->nullable(); // Thứ tự câu hỏi hiện tại
             $table->json('data')->nullable(); // Lưu câu trả lời

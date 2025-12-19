@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('questions', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('question_set_id')->constrained()->onDelete('cascade');
+            $table->foreignId('question_set_id')->constrained('question_sets')->onDelete('cascade');
             $table->integer('order')->default(0); // Thứ tự câu hỏi
             $table->text('question_text'); // Nội dung câu hỏi
             $table->string('field_name'); // Tên field để lưu trữ (ví dụ: name, phone, issue)
