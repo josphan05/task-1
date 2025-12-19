@@ -94,9 +94,7 @@
                             </div>
                             @endif
                         </div>
-
                     </div>
-
                     <!-- Nội dung tin nhắn -->
                     <div class="mb-4">
                         <label for="message" class="form-label fw-semibold">

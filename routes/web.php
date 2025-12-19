@@ -2,6 +2,9 @@
 
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\QuestionController;
+use App\Http\Controllers\QuestionSetCommandController;
+use App\Http\Controllers\QuestionSetController;
 use App\Http\Controllers\TelegramController;
 use App\Http\Controllers\TelegramWebhookController;
 use App\Http\Controllers\UserController;
@@ -37,4 +40,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/telegram/callbacks/new', [TelegramWebhookController::class, 'getNewCallbacks'])->name('telegram.callbacks.new');
     Route::get('/telegram/messages', [TelegramWebhookController::class, 'getMessages'])->name('telegram.messages');
     Route::get('/telegram/messages/new', [TelegramWebhookController::class, 'getNewMessages'])->name('telegram.messages.new');
+
+    Route::resource('question-sets', QuestionSetController::class);
+    Route::resource('question-sets.questions', QuestionController::class)->except(['index', 'show']);
+    Route::resource('question-set-commands', QuestionSetCommandController::class);
 });

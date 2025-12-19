@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\QuestionSetCommand;
 use App\Repositories\Contracts\TelegramCallbackRepositoryInterface;
 use App\Repositories\Contracts\TelegramMessageRepositoryInterface;
+use App\Services\TelegramConversationService;
 use App\Services\TelegramService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -14,7 +16,8 @@ class TelegramWebhookController extends Controller
     public function __construct(
         protected TelegramService $telegramService,
         protected TelegramCallbackRepositoryInterface $callbackRepository,
-        protected TelegramMessageRepositoryInterface $messageRepository
+        protected TelegramMessageRepositoryInterface $messageRepository,
+        protected TelegramConversationService $conversationService
     ) {}
 
     public function handle(Request $request): JsonResponse
@@ -48,6 +51,13 @@ class TelegramWebhookController extends Controller
         ]);
 
         $telegramUserId = $from['id'] ?? null;
+        $chatId = $message['chat']['id'] ?? null;
+
+        // Xử lý conversation callback (ưu tiên xử lý trước khi lưu vào DB)
+        if ($telegramUserId && $chatId) {
+            $this->conversationService->handleCallback($telegramUserId, $chatId, $callbackData);
+        }
+
         $user = $telegramUserId
             ? $this->callbackRepository->findUserByTelegramId($telegramUserId)
             : null;
@@ -62,7 +72,7 @@ class TelegramWebhookController extends Controller
             'telegram_last_name' => $from['last_name'] ?? null,
             'user_id' => $user?->id,
             'message_id' => $message['message_id'] ?? null,
-            'chat_id' => $message['chat']['id'] ?? null,
+            'chat_id' => $chatId,
             'raw_data' => $callbackQuery,
         ]);
 
@@ -102,13 +112,26 @@ class TelegramWebhookController extends Controller
         ]);
 
         $telegramUserId = $from['id'] ?? null;
+        $chatId = $chat['id'] ?? null;
+        $messageText = $message['text'] ?? '';
+
+        // Kiểm tra nếu là command (bắt đầu bằng /)
+        if (str_starts_with($messageText, '/')) {
+            $this->handleCommand($telegramUserId, $chatId, $messageText);
+        } else {
+            // Xử lý conversation flow
+            if ($telegramUserId && $chatId) {
+                $this->conversationService->handleConversation($telegramUserId, $chatId, $messageText);
+            }
+        }
+
         $user = $telegramUserId
             ? $this->messageRepository->findUserByTelegramId($telegramUserId)
             : null;
 
         $messageData = [
             'message_id' => $message['message_id'] ?? null,
-            'text' => $message['text'] ?? null,
+            'text' => $messageText,
             'telegram_user_id' => $telegramUserId,
             'telegram_username' => $from['username'] ?? null,
             'telegram_first_name' => $from['first_name'] ?? null,
@@ -127,6 +150,37 @@ class TelegramWebhookController extends Controller
         Log::info('Message saved', ['message' => $savedMessage->toArray()]);
 
         return response()->json(['status' => 'ok', 'message_id' => $savedMessage->id]);
+    }
+
+    protected function handleCommand(int $telegramUserId, string $chatId, string $command): void
+    {
+        // Tìm command trong database
+        $commandMapping = QuestionSetCommand::findByCommand($command);
+
+        if ($commandMapping && $commandMapping->questionSet) {
+            // Reset conversation và set question set mới
+            $conversation = \App\Models\TelegramConversation::firstOrCreate(
+                ['telegram_user_id' => $telegramUserId],
+                ['step' => null, 'data' => [], 'current_question_order' => null]
+            );
+
+            $conversation->question_set_id = $commandMapping->question_set_id;
+            $conversation->step = null;
+            $conversation->current_question_order = null;
+            $conversation->data = [];
+            $conversation->save();
+
+            // Gửi response message nếu có
+            if ($commandMapping->response_message) {
+                $this->telegramService->sendMessageWithMarkup($chatId, $commandMapping->response_message);
+            }
+
+            // Bắt đầu conversation với question set này
+            $this->conversationService->startConversationWithQuestionSet($telegramUserId, $chatId, $commandMapping->questionSet);
+        } else {
+            // Command không tìm thấy, sử dụng default
+            $this->conversationService->handleConversation($telegramUserId, $chatId, $command);
+        }
     }
 
     public function getCallbacks(Request $request): JsonResponse

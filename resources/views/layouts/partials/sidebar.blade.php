@@ -51,6 +51,34 @@
                 <span class="nav-text">Gửi Telegram</span>
             </a>
         </li>
+
+        <!-- Question Sets -->
+        <li class="nav-group {{ request()->routeIs('question-sets.*') || request()->routeIs('question-set-commands.*') ? 'show' : '' }}">
+            <a class="nav-link nav-group-toggle" href="#">
+                <i class="nav-icon bi bi-question-circle"></i>
+                <span class="nav-text">Bộ Câu Hỏi</span>
+            </a>
+            <ul class="nav-group-items compact">
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('question-sets.index') ? 'active' : '' }}" href="{{ route('question-sets.index') }}">
+                        <span class="nav-icon"><span class="nav-icon-bullet"></span></span>
+                        <span class="nav-text">Danh sách</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('question-sets.create') ? 'active' : '' }}" href="{{ route('question-sets.create') }}">
+                        <span class="nav-icon"><span class="nav-icon-bullet"></span></span>
+                        <span class="nav-text">Thêm mới</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('question-set-commands.*') ? 'active' : '' }}" href="{{ route('question-set-commands.index') }}">
+                        <span class="nav-icon"><span class="nav-icon-bullet"></span></span>
+                        <span class="nav-text">Commands</span>
+                    </a>
+                </li>
+            </ul>
+        </li>
         {{-- <li class="nav-title">Hệ thống</li>
 
         <!-- Settings -->

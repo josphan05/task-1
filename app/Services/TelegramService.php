@@ -40,7 +40,10 @@ class TelegramService
             'has_markup' => !empty($replyMarkupJson),
         ]);
         try {
-            $cleanMessage = htmlspecialchars($message, ENT_QUOTES, 'UTF-8');
+            // Chỉ escape HTML nếu parse_mode không phải HTML hoặc Markdown
+            $cleanMessage = ($parseMode === 'HTML' || $parseMode === 'Markdown' || $parseMode === 'MarkdownV2')
+                ? $message
+                : htmlspecialchars($message, ENT_QUOTES, 'UTF-8');
 
             $params = [
                 'chat_id' => $chatId,
@@ -80,7 +83,7 @@ class TelegramService
     /**
      * Build inline keyboard markup from button array
      */
-    protected function buildInlineKeyboard(array $buttons): array
+    public function buildInlineKeyboard(array $buttons): array
     {
         $keyboard = [];
 
