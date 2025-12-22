@@ -55,6 +55,25 @@ document.addEventListener('DOMContentLoaded', function() {
     }, true);
 
     // ========================================
+    // Mobile Sidebar Toggle - Sử dụng CoreUI Pro API
+    // ========================================
+    // CoreUI Pro sẽ tự động xử lý backdrop và mobile behavior
+    // Chỉ cần đảm bảo sidebar được khởi tạo đúng cách
+    if (typeof coreui !== 'undefined' && coreui.Sidebar && sidebar) {
+        // Khởi tạo Sidebar instance nếu chưa có
+        const sidebarInstance = coreui.Sidebar.getOrCreateInstance(sidebar);
+        
+        // Header toggler sẽ sử dụng CoreUI API
+        const sidebarTogglerMobile = document.querySelector('.header-toggler');
+        if (sidebarTogglerMobile) {
+            sidebarTogglerMobile.addEventListener('click', function(e) {
+                e.preventDefault();
+                sidebarInstance.toggle();
+            });
+        }
+    }
+
+    // ========================================
     // Initialize Toasts
     // ========================================
     if (typeof coreui !== 'undefined' && coreui.Toast) {

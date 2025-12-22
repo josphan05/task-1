@@ -27,8 +27,9 @@
                             <label for="command" class="form-label">Command <span class="text-danger">*</span></label>
                             <div class="input-group">
                                 <span class="input-group-text">/</span>
-                                <input type="text" class="form-control @error('command') is-invalid @enderror" id="command"
-                                    name="command" value="{{ old('command', ltrim($questionSetCommand->command, '/')) }}">
+                                <input type="text" class="form-control @error('command') is-invalid @enderror"
+                                    id="command" name="command"
+                                    value="{{ old('command', ltrim($questionSetCommand->command, '/')) }}">
                             </div>
                             <small class="text-muted">Command sẽ tự động thêm dấu / ở đầu</small>
                             @error('command')
@@ -37,14 +38,17 @@
                         </div>
 
                         <div class="mb-3">
-                            <label for="question_set_id" class="form-label">Bộ Câu Hỏi <span class="text-danger">*</span></label>
+                            <label for="question_set_id" class="form-label">Bộ Câu Hỏi <span
+                                    class="text-danger">*</span></label>
                             <select class="form-select @error('question_set_id') is-invalid @enderror" id="question_set_id"
                                 name="question_set_id">
                                 <option value="">-- Chọn bộ câu hỏi --</option>
-                                @foreach($questionSets as $qs)
+                                @foreach ($questionSets as $qs)
                                     <option value="{{ $qs->id }}"
                                         {{ old('question_set_id', $questionSetCommand->question_set_id) == $qs->id ? 'selected' : '' }}>
-                                        {{ $qs->name }} @if($qs->is_default)(Mặc định)@endif
+                                        {{ $qs->name }} @if ($qs->is_default)
+                                            (Mặc định)
+                                        @endif
                                     </option>
                                 @endforeach
                             </select>
@@ -65,8 +69,12 @@
 
                         <div class="mb-3">
                             <div class="form-check form-switch">
+                                <input type="hidden" name="is_active" value="0">
+
                                 <input class="form-check-input @error('is_active') is-invalid @enderror" type="checkbox"
-                                    id="is_active" name="is_active" value="1" {{ old('is_active', $questionSetCommand->is_active) ? 'checked' : '' }}>
+                                    id="is_active" name="is_active" value="1"
+                                    {{ old('is_active', $questionSetCommand->is_active) ? 'checked' : '' }}>
+
                                 <label class="form-check-label" for="is_active">
                                     Hoạt động
                                 </label>
@@ -92,4 +100,3 @@
         </div>
     </div>
 @endsection
-

@@ -138,3 +138,70 @@
     margin-left: 4rem;
 }
 
+/* ========================================
+   Responsive Styles (Mobile) - CoreUI Pro Standard
+   ======================================== */
+
+/* CoreUI Pro set --cui-sidebar-occupy-start cho sidebar ~ * (wrapper) */
+/* Nhưng chúng ta cần áp dụng cho .body bên trong wrapper */
+@media (min-width: 992px) {
+    .sidebar ~ .wrapper .body {
+        padding-left: var(--cui-sidebar-occupy-start, 16rem);
+        transition: padding-left 0.3s ease;
+    }
+
+    body.sidebar-unfoldable .sidebar ~ .wrapper .body {
+        padding-left: var(--cui-sidebar-occupy-start, 4rem);
+    }
+}
+
+@media (max-width: 991.98px) {
+    /* Trên mobile: đảm bảo KHÔNG có padding/margin nào cả */
+    .body,
+    .wrapper .body,
+    .sidebar ~ .wrapper .body {
+        padding-left: 0 !important;
+        margin-left: 0 !important;
+        padding-inline-start: 0 !important;
+        margin-inline-start: 0 !important;
+    }
+
+    body.sidebar-unfoldable .body,
+    body.sidebar-unfoldable .wrapper .body,
+    body.sidebar-unfoldable .sidebar ~ .wrapper .body {
+        padding-left: 0 !important;
+        margin-left: 0 !important;
+        padding-inline-start: 0 !important;
+        margin-inline-start: 0 !important;
+    }
+
+    .wrapper,
+    .sidebar ~ .wrapper {
+        margin-left: 0 !important;
+        padding-left: 0 !important;
+        margin-inline-start: 0 !important;
+        padding-inline-start: 0 !important;
+    }
+
+    /* Footer không có margin trên mobile */
+    .sidebar-fixed ~ .wrapper > .footer,
+    .sidebar-narrow-unfoldable ~ .wrapper > .footer {
+        margin-left: 0 !important;
+        margin-inline-start: 0 !important;
+    }
+
+    /* Đảm bảo main content không bị đè */
+    main,
+    .container-lg {
+        margin-left: 0 !important;
+        /* padding-left: 0 !important; */
+        margin-inline-start: 0 !important;
+        /* padding-inline-start: 0 !important; */
+    }
+
+    /* Đảm bảo sidebar ẩn đúng cách trên mobile */
+    .sidebar:not(.show) {
+        margin-inline-start: calc(-1 * var(--cui-sidebar-width)) !important;
+    }
+}
+

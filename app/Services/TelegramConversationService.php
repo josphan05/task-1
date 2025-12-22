@@ -50,7 +50,7 @@ class TelegramConversationService
     protected function startConversation(TelegramConversation $conversation, string $chatId, QuestionSet $questionSet): void
     {
         $startMessage = $questionSet->start_message
-            ?: "Xin chào! Tôi là bot hỗ trợ.\n\nHãy trả lời các câu hỏi sau:";
+            ?: "Xin chào! Tôi là bot hỗ trợ. Hãy trả lời các câu hỏi sau:";
 
         $this->telegramService->sendMessageWithMarkup($chatId, $startMessage);
 
@@ -303,7 +303,7 @@ class TelegramConversationService
             $this->telegramService->sendMessageWithMarkup($chatId, "Lỗi: Không tìm thấy bộ câu hỏi.");
             return;
         }
-                
+
         $conversation->data = [];
         $conversation->save();
         $this->startConversation($conversation, $chatId, $questionSet);

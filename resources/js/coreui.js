@@ -64,22 +64,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Mobile sidebar toggle
-    if (sidebarTogglerMobile && sidebar) {
-        sidebarTogglerMobile.addEventListener('click', function() {
-            sidebar.classList.toggle('show');
-        });
-    }
-
-    // Close sidebar on mobile when clicking outside
-    document.addEventListener('click', function(event) {
-        const isClickInsideSidebar = sidebar?.contains(event.target);
-        const isClickOnToggler = sidebarTogglerMobile?.contains(event.target);
-        
-        if (!isClickInsideSidebar && !isClickOnToggler && sidebar?.classList.contains('show') && window.innerWidth < 992) {
-            sidebar.classList.remove('show');
-        }
-    });
+    // Sidebar sẽ được CoreUI Pro tự động khởi tạo và xử lý mobile behavior
+    // Header toggler đã có onclick handler trong header.blade.php
 });
 
 // Export for use in other modules

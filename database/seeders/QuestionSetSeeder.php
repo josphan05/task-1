@@ -17,7 +17,7 @@ class QuestionSetSeeder extends Seeder
         $questionSet = QuestionSet::create([
             'name' => 'Form Phản Ánh',
             'description' => 'Bộ câu hỏi thu thập thông tin phản ánh từ người dùng',
-            'start_message' => 'Xin chào! Tôi là bot hỗ trợ.\n\nHãy trả lời các câu hỏi sau:',
+            'start_message' => 'Xin chào! Tôi là bot hỗ trợ. nHãy trả lời các câu hỏi sau:',
             'completion_message' => 'Cảm ơn, thông tin đã được ghi nhận.',
             'completion_buttons' => [
                 [

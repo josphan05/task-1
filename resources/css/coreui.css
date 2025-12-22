@@ -16,14 +16,8 @@
     min-height: 100vh;
 }
 
-/* Sidebar Customizations */
-.sidebar {
-    position: fixed;
-    top: 0;
-    bottom: 0;
-    left: 0;
-    z-index: 1030;
-}
+/* Sidebar Customizations - CoreUI Pro đã xử lý position và responsive */
+/* Không cần override, để CoreUI Pro tự xử lý */
 
 .sidebar-narrow-unfoldable:not(:hover) {
     width: var(--cui-sidebar-narrow-width);
@@ -41,15 +35,24 @@ body {
     flex-direction: column;
     flex-grow: 1;
     min-width: 0;
-    padding-left: var(--cui-sidebar-width);
-    transition: padding-left 0.3s ease;
+}
+
+/* CoreUI Pro set --cui-sidebar-occupy-start cho sidebar ~ * (wrapper) */
+/* Chúng ta cần áp dụng cho .body bên trong wrapper */
+@media (min-width: 992px) {
+    .sidebar ~ .wrapper .body {
+        padding-left: var(--cui-sidebar-occupy-start, 16rem);
+        transition: padding-left 0.3s ease;
+    }
 }
 
 /* ========== Sidebar Unfoldable (Thu nhỏ, hover mới mở) ========== */
 
 /* Khi sidebar thu nhỏ - content dịch sang trái */
-body.sidebar-unfoldable .body {
-    padding-left: var(--cui-sidebar-narrow-width);
+@media (min-width: 992px) {
+    body.sidebar-unfoldable .sidebar ~ .wrapper .body {
+        padding-left: var(--cui-sidebar-occupy-start, 4rem);
+    }
 }
 
 /* Sidebar thu nhỏ - mặc định */
@@ -200,18 +203,48 @@ body.sidebar-unfoldable .sidebar:hover .nav-icon {
     background: #a8a8a8;
 }
 
-/* Responsive Adjustments */
+/* Responsive Adjustments - CoreUI Pro đã xử lý sidebar responsive */
+/* Đảm bảo body và wrapper không có padding/margin trên mobile */
 @media (max-width: 991.98px) {
-    .sidebar {
-        margin-left: calc(-1 * var(--cui-sidebar-width));
+    /* Trên mobile: đảm bảo KHÔNG có padding/margin nào cả */
+    .body,
+    .wrapper .body,
+    .sidebar ~ .wrapper .body {
+        padding-left: 0 !important;
+        margin-left: 0 !important;
+        padding-inline-start: 0 !important;
+        margin-inline-start: 0 !important;
     }
 
-    .sidebar.show {
-        margin-left: 0;
+    body.sidebar-unfoldable .body,
+    body.sidebar-unfoldable .wrapper .body,
+    body.sidebar-unfoldable .sidebar ~ .wrapper .body {
+        padding-left: 0 !important;
+        margin-left: 0 !important;
+        padding-inline-start: 0 !important;
+        margin-inline-start: 0 !important;
     }
 
-    .body {
-        padding-left: 0;
+    .wrapper,
+    .sidebar ~ .wrapper {
+        margin-left: 0 !important;
+        padding-left: 0 !important;
+        margin-inline-start: 0 !important;
+        padding-inline-start: 0 !important;
+    }
+
+    /* Đảm bảo main content không bị đè */
+    main,
+    .container-lg {
+        margin-left: 0 !important;
+        padding-left: 0 !important;
+        margin-inline-start: 0 !important;
+        padding-inline-start: 0 !important;
+    }
+    
+    /* Đảm bảo sidebar ẩn đúng cách trên mobile */
+    .sidebar:not(.show) {
+        margin-inline-start: calc(-1 * var(--cui-sidebar-width)) !important;
     }
 }
 

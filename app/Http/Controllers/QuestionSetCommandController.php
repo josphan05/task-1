@@ -33,7 +33,7 @@ class QuestionSetCommandController extends Controller
             'response_message' => 'nullable|string',
             'is_active' => 'boolean',
         ]);
-            
+
         if (!str_starts_with($validated['command'], '/')) {
             $validated['command'] = '/' . $validated['command'];
         }
