@@ -21,11 +21,35 @@ class TelegramWebhookController extends Controller
 
     public function handle(Request $request): JsonResponse
     {
+        // Log ngay từ đầu để đảm bảo request đã đến
+        $rawContent = $request->getContent();
+
+        Log::info('=== WEBHOOK REQUEST RECEIVED ===', [
+            'method' => $request->method(),
+            'url' => $request->fullUrl(),
+            'ip' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+            'content_length' => strlen($rawContent),
+            'content_preview' => substr($rawContent, 0, 500), // Log 500 ký tự đầu để xem có gì
+        ]);
+
         $data = $request->all();
 
-        Log::info('Telegram webhook received', ['data' => $data]);
+        Log::info('Telegram webhook received', [
+            'has_callback_query' => isset($data['callback_query']),
+            'has_message' => isset($data['message']),
+            'has_edited_message' => isset($data['edited_message']),
+            'has_channel_post' => isset($data['channel_post']),
+            'update_id' => $data['update_id'] ?? null,
+            'keys' => array_keys($data),
+            'raw_data' => $data, // Log toàn bộ data để debug
+        ]);
 
         if (isset($data['callback_query'])) {
+            Log::info('Callback query detected', [
+                'callback_id' => $data['callback_query']['id'] ?? null,
+                'callback_data' => $data['callback_query']['data'] ?? null,
+            ]);
             $result = $this->webhookService->handleCallbackQuery($data['callback_query']);
             return response()->json($result);
         }
@@ -35,6 +59,7 @@ class TelegramWebhookController extends Controller
             return response()->json($result);
         }
 
+        Log::warning('Webhook received but no callback_query or message', ['data' => $data]);
         return response()->json(['status' => 'ok']);
     }
 

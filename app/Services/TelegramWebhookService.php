@@ -34,46 +34,99 @@ class TelegramWebhookService
             'callback_id' => $callbackId,
             'callback_data' => $callbackData,
             'from' => $from,
+            'message_id' => $message['message_id'] ?? null,
         ]);
 
         $telegramUserId = $from['id'] ?? null;
         $chatId = $message['chat']['id'] ?? null;
 
-        // Xử lý conversation callback (ưu tiên xử lý trước khi lưu vào DB)
-        if ($telegramUserId && $chatId) {
-            $this->conversationService->handleCallback($telegramUserId, $chatId, $callbackData);
-        }
-
         $user = $telegramUserId
             ? $this->callbackRepository->findUserByTelegramId($telegramUserId)
             : null;
 
-        $callback = $this->callbackRepository->create([
-            'callback_id' => $callbackId,
-            'callback_data' => $callbackData,
-            'message_text' => $message['text'] ?? null,
-            'telegram_user_id' => $telegramUserId,
-            'telegram_username' => $from['username'] ?? null,
-            'telegram_first_name' => $from['first_name'] ?? null,
-            'telegram_last_name' => $from['last_name'] ?? null,
-            'user_id' => $user?->id,
-            'message_id' => $message['message_id'] ?? null,
-            'chat_id' => $chatId,
-            'raw_data' => $callbackQuery,
-        ]);
-
-        Log::info('Callback saved', ['callback' => $callback->toArray()]);
-
+        $callback = null;
         try {
-            $this->telegramService->answerCallbackQuery($callbackId, "Đã nhận: {$callbackData}");
+            $callback = $this->callbackRepository->create([
+                'callback_id' => $callbackId,
+                'callback_data' => $callbackData,
+                'message_text' => $message['text'] ?? null,
+                'telegram_user_id' => $telegramUserId,
+                'telegram_username' => $from['username'] ?? null,
+                'telegram_first_name' => $from['first_name'] ?? null,
+                'telegram_last_name' => $from['last_name'] ?? null,
+                'user_id' => $user?->id,
+                'message_id' => $message['message_id'] ?? null,
+                'chat_id' => $chatId,
+                'raw_data' => $callbackQuery,
+            ]);
+
+            Log::info('Callback saved successfully', [
+                'callback_id' => $callback->id,
+                'callback_data' => $callbackData,
+                'telegram_user_id' => $telegramUserId,
+                'message_id' => $message['message_id'] ?? null,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to save callback', [
+                'callback_id' => $callbackId,
+                'callback_data' => $callbackData,
+                'telegram_user_id' => $telegramUserId,
+                'message_id' => $message['message_id'] ?? null,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            // Vẫn tiếp tục xử lý để answer callback query
+        }
+
+        // Kiểm tra xem callback có phải là conversation-related không
+        $isConversationCallback = str_starts_with($callbackData, 'answer_')
+            || in_array($callbackData, ['confirm_send', 'edit_form', 'review_info']);
+
+        // Xử lý conversation callback nếu có
+        if ($telegramUserId && $chatId && $isConversationCallback) {
+            try {
+                $this->conversationService->handleCallback($telegramUserId, $chatId, $callbackData);
+            } catch (\Exception $e) {
+                Log::error('Failed to handle conversation callback', [
+                    'telegram_user_id' => $telegramUserId,
+                    'callback_data' => $callbackData,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        // Luôn answer callback query để Telegram biết đã nhận được và hiển thị popup
+        // Nếu là conversation callback, conversationService sẽ gửi tin nhắn response riêng
+        try {
+            // Answer với text để hiển thị popup cho user
+            // Nếu là conversation callback, không cần popup vì sẽ có tin nhắn response
+            // Nếu không phải conversation callback (từ admin message), hiển thị popup xác nhận
+            if ($isConversationCallback) {
+                // Conversation callback: answer không có text (chỉ để remove loading)
+                $this->telegramService->answerCallbackQuery($callbackId, null);
+            } else {
+                // Admin message callback: hiển thị popup xác nhận
+                $this->telegramService->answerCallbackQuery($callbackId, "Đã nhận: {$callbackData}", false);
+            }
+
+            Log::info('Callback query answered', [
+                'callback_id' => $callbackId,
+                'callback_data' => $callbackData,
+                'is_conversation' => $isConversationCallback,
+            ]);
         } catch (\Exception $e) {
             Log::error('Failed to answer callback query', [
                 'callback_id' => $callbackId,
                 'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
         }
 
-        return ['status' => 'ok', 'callback_id' => $callback->id];
+        return [
+            'status' => 'ok',
+            'callback_id' => $callback?->id ?? null,
+            'saved' => $callback !== null,
+        ];
     }
 
     /**

@@ -45,12 +45,14 @@ class TelegramResponseService
 
     /**
      * Get callbacks grouped by message ID
+     * Lấy tất cả callbacks, bao gồm cả từ admin messages và conversation
      *
      * @param int $limit
      * @return \Illuminate\Support\Collection
      */
     public function getCallbacksGrouped(int $limit = 100): \Illuminate\Support\Collection
     {
+        // Tăng limit để đảm bảo lấy đủ callbacks
         return $this->callbackRepository->getGroupedByMessageId($limit);
     }
 

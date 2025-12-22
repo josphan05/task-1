@@ -45,17 +45,22 @@ class TelegramCallbackRepository extends BaseRepository implements TelegramCallb
     /**
      * Get callbacks grouped by message_id, sorted by latest callback in each group
      */
-    public function getGroupedByMessageId(int $limit = 50): Collection
+    public function getGroupedByMessageId(int $limit = 100): Collection
     {
+        // Lấy tất cả callbacks, không filter theo loại
         $callbacks = $this->model
             ->with('user')
             ->orderBy('created_at', 'desc')
             ->limit($limit)
-            ->get()
-            ->groupBy('message_id');
+            ->get();
+
+        // Group by message_id, sử dụng 'no_message' cho các callback không có message_id
+        $grouped = $callbacks->groupBy(function ($callback) {
+            return $callback->message_id ?? 'no_message_' . $callback->id;
+        });
 
         // Sort groups by the latest callback's created_at in each group
-        return $callbacks->sortByDesc(function ($group) {
+        return $grouped->sortByDesc(function ($group) {
             return $group->first()->created_at;
         });
     }
