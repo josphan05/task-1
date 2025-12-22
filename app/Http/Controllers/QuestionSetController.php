@@ -2,19 +2,22 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\QuestionSet\StoreQuestionSetRequest;
+use App\Http\Requests\QuestionSet\UpdateQuestionSetRequest;
 use App\Models\QuestionSet;
+use App\Services\QuestionSetService;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class QuestionSetController extends Controller
 {
+    public function __construct(
+        protected QuestionSetService $questionSetService
+    ) {}
+
     public function index(): View
     {
-        $questionSets = QuestionSet::with('questions')
-            ->orderBy('is_default', 'desc')
-            ->orderBy('created_at', 'desc')
-            ->paginate(10);
+        $questionSets = $this->questionSetService->getPaginatedWithQuestions(10);
 
         return view('question-sets.index', compact('questionSets'));
     }
@@ -24,23 +27,9 @@ class QuestionSetController extends Controller
         return view('question-sets.create');
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(StoreQuestionSetRequest $request): RedirectResponse
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'start_message' => 'nullable|string',
-            'completion_message' => 'nullable|string',
-            'is_active' => 'boolean',
-            'is_default' => 'boolean',
-        ]);
-
-        // Nếu set làm mặc định, bỏ mặc định của các bộ khác
-        if ($validated['is_default'] ?? false) {
-            QuestionSet::where('is_default', true)->update(['is_default' => false]);
-        }
-
-        $questionSet = QuestionSet::create($validated);
+        $questionSet = $this->questionSetService->createQuestionSet($request->validated());
 
         return redirect()
             ->route('question-sets.show', $questionSet)
@@ -49,9 +38,7 @@ class QuestionSetController extends Controller
 
     public function show(QuestionSet $questionSet): View
     {
-        $questionSet->load(['questions' => function($query) {
-            $query->orderBy('order');
-        }]);
+        $questionSet = $this->questionSetService->getWithOrderedQuestions($questionSet->id);
         return view('question-sets.show', compact('questionSet'));
     }
 
@@ -60,25 +47,9 @@ class QuestionSetController extends Controller
         return view('question-sets.edit', compact('questionSet'));
     }
 
-    public function update(Request $request, QuestionSet $questionSet): RedirectResponse
+    public function update(UpdateQuestionSetRequest $request, QuestionSet $questionSet): RedirectResponse
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'start_message' => 'nullable|string',
-            'completion_message' => 'nullable|string',
-            'is_active' => 'boolean',
-            'is_default' => 'boolean',
-        ]);
-
-        // Nếu set làm mặc định, bỏ mặc định của các bộ khác
-        if ($validated['is_default'] ?? false) {
-            QuestionSet::where('id', '!=', $questionSet->id)
-                ->where('is_default', true)
-                ->update(['is_default' => false]);
-        }
-
-        $questionSet->update($validated);
+        $questionSet = $this->questionSetService->updateQuestionSet($questionSet->id, $request->validated());
 
         return redirect()
             ->back()
@@ -88,7 +59,7 @@ class QuestionSetController extends Controller
     public function destroy(QuestionSet $questionSet): RedirectResponse
     {
         $name = $questionSet->name;
-        $questionSet->delete();
+        $this->questionSetService->delete($questionSet->id);
 
         return redirect()
             ->route('question-sets.index')

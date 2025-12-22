@@ -15,6 +15,9 @@ class RepositoryServiceProvider extends ServiceProvider
         \App\Repositories\Contracts\UserRepositoryInterface::class => \App\Repositories\Eloquent\UserRepository::class,
         \App\Repositories\Contracts\TelegramCallbackRepositoryInterface::class => \App\Repositories\Eloquent\TelegramCallbackRepository::class,
         \App\Repositories\Contracts\TelegramMessageRepositoryInterface::class => \App\Repositories\Eloquent\TelegramMessageRepository::class,
+        \App\Repositories\Contracts\QuestionSetRepositoryInterface::class => \App\Repositories\Eloquent\QuestionSetRepository::class,
+        \App\Repositories\Contracts\QuestionRepositoryInterface::class => \App\Repositories\Eloquent\QuestionRepository::class,
+        \App\Repositories\Contracts\QuestionSetCommandRepositoryInterface::class => \App\Repositories\Eloquent\QuestionSetCommandRepository::class,
     ];
 
     /**

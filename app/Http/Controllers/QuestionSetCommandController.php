@@ -2,79 +2,60 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\QuestionSet;
+use App\Http\Requests\QuestionSetCommand\StoreQuestionSetCommandRequest;
+use App\Http\Requests\QuestionSetCommand\UpdateQuestionSetCommandRequest;
 use App\Models\QuestionSetCommand;
+use App\Services\QuestionSetCommandService;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class QuestionSetCommandController extends Controller
 {
+    public function __construct(
+        protected QuestionSetCommandService $commandService
+    ) {}
+
     public function index(): View
     {
-        $commands = QuestionSetCommand::with('questionSet')
-            ->orderBy('command')
-            ->paginate(10);
+        $commands = $this->commandService->getPaginatedWithQuestionSet(10);
 
         return view('question-set-commands.index', compact('commands'));
     }
 
     public function create(): View
     {
-        $questionSets = QuestionSet::where('is_active', true)->get();
+        $questionSets = $this->commandService->getActiveQuestionSets();
         return view('question-set-commands.create', compact('questionSets'));
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(StoreQuestionSetCommandRequest $request): RedirectResponse
     {
-        $validated = $request->validate([
-            'command' => 'required|string|max:255|unique:question_set_commands,command',
-            'question_set_id' => 'required|exists:question_sets,id',
-            'response_message' => 'nullable|string',
-            'is_active' => 'boolean',
-        ]);
-
-        if (!str_starts_with($validated['command'], '/')) {
-            $validated['command'] = '/' . $validated['command'];
-        }
-
-        QuestionSetCommand::create($validated);
+        $command = $this->commandService->createCommand($request->validated());
 
         return redirect()
             ->route('question-set-commands.index')
-            ->with('success', "Command '{$validated['command']}' đã được tạo thành công.");
+            ->with('success', "Command '{$command->command}' đã được tạo thành công.");
     }
 
     public function edit(QuestionSetCommand $questionSetCommand): View
     {
-        $questionSets = QuestionSet::where('is_active', true)->get();
+        $questionSets = $this->commandService->getActiveQuestionSets();
         return view('question-set-commands.edit', compact('questionSetCommand', 'questionSets'));
     }
 
-    public function update(Request $request, QuestionSetCommand $questionSetCommand): RedirectResponse
+    public function update(UpdateQuestionSetCommandRequest $request, QuestionSetCommand $questionSetCommand): RedirectResponse
     {
-        $validated = $request->validate([
-            'command' => 'required|string|max:255|unique:question_set_commands,command,' . $questionSetCommand->id,
-            'question_set_id' => 'required|exists:question_sets,id',
-            'response_message' => 'nullable|string',
-            'is_active' => 'boolean',
-        ]);
-
-        if (!str_starts_with($validated['command'], '/')) {
-            $validated['command'] = '/' . $validated['command'];
-        }
-
-        $questionSetCommand->update($validated);
+        $command = $this->commandService->updateCommand($questionSetCommand->id, $request->validated());
 
         return redirect()
             ->back()
-            ->with('success', "Command '{$validated['command']}' đã được cập nhật thành công.");
+            ->with('success', "Command '{$command->command}' đã được cập nhật thành công.");
     }
 
     public function destroy(QuestionSetCommand $questionSetCommand): RedirectResponse
     {
         $command = $questionSetCommand->command;
-        $questionSetCommand->delete();
+        $this->commandService->delete($questionSetCommand->id);
 
         return redirect()
             ->route('question-set-commands.index')
