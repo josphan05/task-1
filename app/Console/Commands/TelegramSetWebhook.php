@@ -10,7 +10,7 @@ class TelegramSetWebhook extends Command
     protected $signature = 'telegram:webhook
                             {action=set : Action: set, remove, info}
                             {--url= : Custom webhook URL (default: auto-detect)}';
-    // php artisan telegram:webhook set --url=https://nonprudent-ratty-suzette.ngrok-free.dev/task-1/telegram/webhook
+
     protected $description = 'Manage Telegram bot webhook (test webhook local ngrok)';
 
     public function handle(TelegramService $telegramService): int

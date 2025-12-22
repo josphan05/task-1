@@ -216,9 +216,14 @@ class TelegramService
         try {
             $response = $this->telegram->setWebhook([
                 'url' => $url,
+                'allowed_updates' => ['message', 'callback_query', 'edited_message', 'channel_post'],
             ]);
 
-            Log::info('Telegram webhook set', ['url' => $url, 'response' => $response]);
+            Log::info('Telegram webhook set', [
+                'url' => $url,
+                'allowed_updates' => ['message', 'callback_query', 'edited_message', 'channel_post'],
+                'response' => $response,
+            ]);
 
             return [
                 'success' => true,

@@ -209,31 +209,20 @@ class TelegramConversationService
     {
         $conversation = TelegramConversation::where('telegram_user_id', $telegramUserId)->first();
 
-        // Xử lý callback từ question answer (không cần conversation)
         if (str_starts_with($callbackData, 'answer_')) {
             if (!$conversation) {
-                Log::warning('Answer callback without conversation', [
-                    'telegram_user_id' => $telegramUserId,
-                    'callback_data' => $callbackData
-                ]);
                 return;
             }
             $this->handleQuestionAnswer($conversation, $chatId, $callbackData);
             return;
         }
 
-        // Các callback khác cần conversation
         if (!$conversation) {
-            Log::info('Callback without conversation, ignoring', [
-                'telegram_user_id' => $telegramUserId,
-                'callback_data' => $callbackData
-            ]);
             return;
         }
 
         if ($conversation->step !== 'completed') {
-            $message = "Vui lòng hoàn thành form trước.";
-            $this->telegramService->sendMessageWithMarkup($chatId, $message);
+            $this->telegramService->sendMessageWithMarkup($chatId, "Vui lòng hoàn thành form trước.");
             return;
         }
 
@@ -246,12 +235,6 @@ class TelegramConversationService
                 break;
             case 'review_info':
                 $this->handleReviewInfo($conversation, $chatId);
-                break;
-            default:
-                Log::info('Unknown callback data', [
-                    'telegram_user_id' => $telegramUserId,
-                    'callback_data' => $callbackData
-                ]);
                 break;
         }
     }
