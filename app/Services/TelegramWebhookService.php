@@ -34,9 +34,11 @@ class TelegramWebhookService
         $chatId = $message['chat']['id'] ?? null;
 
         // Xử lý conversation callback trước khi lưu vào DB
+        $isConversationCallback = false;
         if ($telegramUserId && $chatId) {
             try {
-                $this->conversationService->handleCallback($telegramUserId, $chatId, $callbackData);
+                $messageId = $message['message_id'] ?? null;
+                $isConversationCallback = $this->conversationService->handleCallback($telegramUserId, $chatId, $callbackData, $messageId);
             } catch (\Exception $e) {
                 Log::error('Error handling conversation callback', [
                     'telegram_user_id' => $telegramUserId,
@@ -71,6 +73,20 @@ class TelegramWebhookService
                 'callback_id' => $callbackId,
                 'error' => $e->getMessage(),
             ]);
+        }
+
+        // Nếu callback không phải từ conversation và có message_id, xóa keyboard
+        if (!$isConversationCallback && $chatId && isset($message['message_id'])) {
+            try {
+                $this->telegramService->editMessageReplyMarkup($chatId, $message['message_id']);
+            } catch (\Exception $e) {
+                Log::error('Failed to remove keyboard for non-conversation callback', [
+                    'chat_id' => $chatId,
+                    'message_id' => $message['message_id'],
+                    'callback_data' => $callbackData,
+                    'error' => $e->getMessage(),
+                ]);
+            }
         }
 
         return ['status' => 'ok', 'callback_id' => $callback->id];

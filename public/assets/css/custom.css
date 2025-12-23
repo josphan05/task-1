@@ -191,13 +191,13 @@
     }
 
     /* Đảm bảo main content không bị đè */
-    main,
+    /* main,
     .container-lg {
         margin-left: 0 !important;
-        /* padding-left: 0 !important; */
+        padding-left: 0 !important;
         margin-inline-start: 0 !important;
-        /* padding-inline-start: 0 !important; */
-    }
+        padding-inline-start: 0 !important;
+    } */
 
     /* Đảm bảo sidebar ẩn đúng cách trên mobile */
     .sidebar:not(.show) {

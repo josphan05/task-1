@@ -211,6 +211,54 @@ class TelegramService
         }
     }
 
+    /**
+     * Edit message reply markup to remove inline keyboard
+     */
+    public function editMessageReplyMarkup(string $chatId, int $messageId, ?string $replyMarkupJson = null): array
+    {
+        try {
+            $params = [
+                'chat_id' => $chatId,
+                'message_id' => $messageId,
+            ];
+
+            // Nếu replyMarkupJson là null hoặc rỗng, sẽ xóa keyboard
+            // Nếu có giá trị, sẽ cập nhật keyboard mới
+            if ($replyMarkupJson !== null) {
+                $params['reply_markup'] = $replyMarkupJson;
+            } else {
+                // Xóa keyboard bằng cách set reply_markup là empty inline keyboard
+                $params['reply_markup'] = json_encode(['inline_keyboard' => []]);
+            }
+
+            $response = $this->telegram->editMessageReplyMarkup($params);
+
+            Log::info('Telegram message reply markup edited successfully', [
+                'chat_id' => $chatId,
+                'message_id' => $messageId,
+            ]);
+
+            return [
+                'success' => true,
+                'message' => 'Keyboard đã được cập nhật thành công!',
+                'data' => $response,
+            ];
+        } catch (TelegramSDKException $e) {
+            Log::error('Telegram editMessageReplyMarkup error', [
+                'chat_id' => $chatId,
+                'message_id' => $messageId,
+                'error' => $e->getMessage(),
+                'code' => $e->getCode(),
+            ]);
+
+            return [
+                'success' => false,
+                'message' => $this->parseErrorMessage($e->getMessage()),
+                'data' => null,
+            ];
+        }
+    }
+
     public function setWebhook(string $url): array
     {
         try {

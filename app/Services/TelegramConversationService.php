@@ -106,24 +106,47 @@ class TelegramConversationService
             $this->telegramService->sendMessageWithMarkup($chatId, $errorMessage);
             return;
         }
-        $data = $conversation->data ?? [];
-        $data[$currentQuestion->field_name] = $answer;
-        $conversation->updateStep(null, null, $data);
-        $nextQuestion = $questionSet->questions()
-            ->where('order', '>', $currentQuestion->order)
-            ->orderBy('order')
-            ->first();
 
-        if ($nextQuestion) {
-            $this->askQuestion($conversation, $chatId, $nextQuestion);
-        } else {
+        $data = $conversation->data ?? [];
+
+        // Kiểm tra xem đang sửa hay điền mới
+        // Nếu field này đã có trong data và có nhiều hơn 1 field, nghĩa là đang sửa
+        $wasEditing = isset($data[$currentQuestion->field_name]) && count($data) > 1;
+
+        $data[$currentQuestion->field_name] = $answer;
+
+        if ($wasEditing) {
+            // Đang sửa, cập nhật data và quay lại summary
+            $conversation->updateStep('completed', null, $data);
             $this->completeConversation($conversation, $chatId, $questionSet);
+        } else {
+            // Đang điền form mới, tiếp tục như bình thường
+            $conversation->updateStep(null, null, $data);
+            $nextQuestion = $questionSet->questions()
+                ->where('order', '>', $currentQuestion->order)
+                ->orderBy('order')
+                ->first();
+
+            if ($nextQuestion) {
+                $this->askQuestion($conversation, $chatId, $nextQuestion);
+            } else {
+                $this->completeConversation($conversation, $chatId, $questionSet);
+            }
         }
     }
 
-    protected function askQuestion(TelegramConversation $conversation, string $chatId, Question $question): void
+    protected function askQuestion(TelegramConversation $conversation, string $chatId, Question $question, ?string $currentAnswer = null): void
     {
         $message = $question->question_text;
+
+        // Nếu đang sửa và có câu trả lời hiện tại, hiển thị nó
+        if ($currentAnswer !== null && $currentAnswer !== '') {
+            $message = "✏️ <b>Sửa câu hỏi:</b>\n\n";
+            $message .= "<b>" . htmlspecialchars($question->question_text) . "</b>\n\n";
+            $message .= "📝 <b>Câu trả lời hiện tại:</b> <code>" . htmlspecialchars($currentAnswer) . "</code>\n\n";
+            $message .= "Vui lòng nhập câu trả lời mới hoặc chọn lại từ các tùy chọn bên dưới:";
+        }
+
         $keyboardJson = null;
         if (!empty($question->options) && is_array($question->options)) {
             $buttons = [];
@@ -205,41 +228,61 @@ class TelegramConversationService
         return trim($summary);
     }
 
-    public function handleCallback(int $telegramUserId, string $chatId, string $callbackData): void
+    public function handleCallback(int $telegramUserId, string $chatId, string $callbackData, ?int $messageId = null): bool
     {
         $conversation = TelegramConversation::where('telegram_user_id', $telegramUserId)->first();
 
+        // Xử lý callback trả lời câu hỏi
         if (str_starts_with($callbackData, 'answer_')) {
             if (!$conversation) {
-                return;
+                return false;
             }
-            $this->handleQuestionAnswer($conversation, $chatId, $callbackData);
-            return;
+            $this->handleQuestionAnswer($conversation, $chatId, $callbackData, $messageId);
+            return true;
         }
 
+        // Xử lý callback sửa câu hỏi cụ thể
+        if (str_starts_with($callbackData, 'edit_question_')) {
+            if (!$conversation) {
+                return false;
+            }
+            $this->handleEditQuestion($conversation, $chatId, $callbackData, $messageId);
+            return true;
+        }
+
+        // Chỉ xử lý các callback liên quan đến conversation completion
+        $conversationCallbacks = ['confirm_send', 'edit_form', 'review_info'];
+        if (!in_array($callbackData, $conversationCallbacks)) {
+            // Callback không phải từ conversation, không xử lý ở đây
+            return false;
+        }
+
+        // Kiểm tra conversation cho các callback liên quan đến completion
         if (!$conversation) {
-            return;
+            return false;
         }
 
         if ($conversation->step !== 'completed') {
             $this->telegramService->sendMessageWithMarkup($chatId, "Vui lòng hoàn thành form trước.");
-            return;
+            return false;
         }
 
         switch ($callbackData) {
             case 'confirm_send':
-                $this->handleConfirmSend($conversation, $chatId);
-                break;
+                $this->handleConfirmSend($conversation, $chatId, $messageId);
+                return true;
             case 'edit_form':
-                $this->handleEditForm($conversation, $chatId);
-                break;
+                $this->handleEditForm($conversation, $chatId, $messageId);
+                return true;
             case 'review_info':
                 $this->handleReviewInfo($conversation, $chatId);
-                break;
+                return true;
+            default:
+                return false;
         }
     }
 
-    protected function handleQuestionAnswer(TelegramConversation $conversation, string $chatId, string $callbackData): void
+    protected function handleQuestionAnswer(TelegramConversation $conversation, string $chatId, string $callbackData, ?int $messageId = null): void
     {
         $parts = explode('_', $callbackData, 3);
         if (count($parts) < 3 || $parts[0] !== 'answer') {
@@ -263,23 +306,41 @@ class TelegramConversationService
             return;
         }
 
+        // Xóa keyboard của message cũ sau khi đã chọn
+        if ($messageId) {
+            $this->telegramService->editMessageReplyMarkup($chatId, $messageId);
+        }
+
         $data = $conversation->data ?? [];
+
+        // Kiểm tra xem đang sửa hay điền mới
+        // Nếu field này đã có trong data và có nhiều hơn 1 field, nghĩa là đang sửa
+        $wasEditing = isset($data[$fieldName]) && count($data) > 1;
+
         $data[$fieldName] = $answerValue;
-        $conversation->updateStep(null, null, $data);
 
-        $nextQuestion = $questionSet->questions()
-            ->where('order', '>', $currentQuestion->order)
-            ->orderBy('order')
-            ->first();
-
-        if ($nextQuestion) {
-            $this->askQuestion($conversation, $chatId, $nextQuestion);
-        } else {
+        if ($wasEditing) {
+            // Đang sửa, cập nhật data và quay lại summary
+            $conversation->updateStep('completed', null, $data);
             $this->completeConversation($conversation, $chatId, $questionSet);
+        } else {
+            // Đang điền form mới, tiếp tục như bình thường
+            $conversation->updateStep(null, null, $data);
+
+            $nextQuestion = $questionSet->questions()
+                ->where('order', '>', $currentQuestion->order)
+                ->orderBy('order')
+                ->first();
+
+            if ($nextQuestion) {
+                $this->askQuestion($conversation, $chatId, $nextQuestion);
+            } else {
+                $this->completeConversation($conversation, $chatId, $questionSet);
+            }
         }
     }
 
-    protected function handleConfirmSend(TelegramConversation $conversation, string $chatId): void
+    protected function handleConfirmSend(TelegramConversation $conversation, string $chatId, ?int $messageId = null): void
     {
         $data = $conversation->data ?? [];
 
@@ -289,6 +350,11 @@ class TelegramConversationService
             'data' => $data
         ]);
 
+        // Xóa keyboard của message cũ sau khi đã xác nhận gửi
+        if ($messageId) {
+            $this->telegramService->editMessageReplyMarkup($chatId, $messageId);
+        }
+
         $message = "✅ <b>Đã gửi thành công!</b>\n\n" .
                    "Cảm ơn bạn đã phản ánh. Chúng tôi sẽ xử lý sớm nhất có thể.";
         $this->telegramService->sendMessageWithMarkup($chatId, $message, 'HTML');
@@ -296,7 +362,7 @@ class TelegramConversationService
         $conversation->reset();
     }
 
-    protected function handleEditForm(TelegramConversation $conversation, string $chatId): void
+    protected function handleEditForm(TelegramConversation $conversation, string $chatId, ?int $messageId = null): void
     {
         $questionSet = $conversation->questionSet;
         if (!$questionSet) {
@@ -304,9 +370,99 @@ class TelegramConversationService
             return;
         }
 
-        $conversation->data = [];
-        $conversation->save();
-        $this->startConversation($conversation, $chatId, $questionSet);
+        // Xóa keyboard của message cũ
+        if ($messageId) {
+            $this->telegramService->editMessageReplyMarkup($chatId, $messageId);
+        }
+
+        $data = $conversation->data ?? [];
+        $questions = $questionSet->questions()->orderBy('order')->get();
+
+        $message = "✏️ <b>Chọn câu hỏi bạn muốn sửa:</b>\n\n";
+        $buttons = [];
+        $row = [];
+
+        foreach ($questions as $question) {
+            $answer = $data[$question->field_name] ?? null;
+            if ($answer) {
+                $questionText = mb_substr($question->question_text, 0, 30);
+                if (mb_strlen($question->question_text) > 30) {
+                    $questionText .= '...';
+                }
+                $row[] = [
+                    'text' => $questionText,
+                    'type' => 'callback',
+                    'value' => 'edit_question_' . $question->field_name,
+                ];
+                if (count($row) >= 2) {
+                    $buttons[] = $row;
+                    $row = [];
+                }
+            }
+        }
+
+        if (!empty($row)) {
+            $buttons[] = $row;
+        }
+
+        // Thêm button quay lại
+        if (!empty($buttons)) {
+            $buttons[] = [
+                [
+                    'text' => '🔙 Quay lại',
+                    'type' => 'callback',
+                    'value' => 'review_info'
+                ]
+            ];
+        } else {
+            $message = "Không có câu hỏi nào để sửa.";
+            $buttons = [
+                [
+                    [
+                        'text' => '🔙 Quay lại',
+                        'type' => 'callback',
+                        'value' => 'review_info'
+                    ]
+                ]
+            ];
+        }
+
+        $keyboardJson = json_encode($this->telegramService->buildInlineKeyboard($buttons));
+        $this->telegramService->sendMessageWithMarkup($chatId, $message, 'HTML', $keyboardJson);
+    }
+
+    protected function handleEditQuestion(TelegramConversation $conversation, string $chatId, string $callbackData, ?int $messageId = null): void
+    {
+        $questionSet = $conversation->questionSet;
+        if (!$questionSet) {
+            return;
+        }
+
+        // Xóa keyboard của message cũ
+        if ($messageId) {
+            $this->telegramService->editMessageReplyMarkup($chatId, $messageId);
+        }
+
+        $parts = explode('_', $callbackData, 3);
+        if (count($parts) < 3 || $parts[0] !== 'edit' || $parts[1] !== 'question') {
+            return;
+        }
+
+        $fieldName = $parts[2] ?? '';
+        $question = $questionSet->questions()
+            ->where('field_name', $fieldName)
+            ->first();
+
+        if (!$question) {
+            return;
+        }
+
+        $data = $conversation->data ?? [];
+        $currentAnswer = $data[$fieldName] ?? '';
+
+        // Hiển thị lại câu hỏi với câu trả lời hiện tại
+        // askQuestion sẽ tự động hiển thị câu trả lời hiện tại nếu được truyền vào
+        $this->askQuestion($conversation, $chatId, $question, $currentAnswer);
     }
 
     protected function handleReviewInfo(TelegramConversation $conversation, string $chatId): void
