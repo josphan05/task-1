@@ -76,6 +76,7 @@
                             </div>
                             <div class="col-md-6 mb-3">
                                 <div class="form-check form-switch">
+                                    <input type="hidden" name="is_default" value="0">
                                     <input class="form-check-input @error('is_default') is-invalid @enderror" type="checkbox"
                                         id="is_default" name="is_default" value="1" {{ old('is_default', $questionSet->is_default) ? 'checked' : '' }}>
                                     <label class="form-check-label" for="is_default">
