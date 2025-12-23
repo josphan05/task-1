@@ -59,7 +59,7 @@
     @include('components.delete-modal')
 
     <!-- Toast Container -->
-    <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 9999;">
+    <div class="toast-container position-fixed top-0 end-0 p-3 z-1000">
         @if(session('success'))
         <div class="toast align-items-center text-white bg-success border-0 show" role="alert" aria-live="assertive" aria-atomic="true" data-coreui-autohide="true" data-coreui-delay="4000">
             <div class="d-flex">
@@ -119,7 +119,7 @@
     <script src="{{ asset('assets/js/coreui.bundle.min.js') }}"></script>
 
     <!-- Select2 JS -->
-    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    {{-- <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script> --}}
 
     <!-- jQuery Common Config -->
     <script src="{{ asset('assets/js/jquery-config.js') }}?v={{ time() }}"></script>
