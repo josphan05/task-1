@@ -32,13 +32,13 @@ class QuestionSetSeeder extends Seeder
                         'value' => 'edit_form'
                     ]
                 ],
-                [
-                    [
-                        'text' => '📋 Xem lại thông tin',
-                        'type' => 'callback',
-                        'value' => 'review_info'
-                    ]
-                ]
+                // [
+                //     [
+                //         'text' => '📋 Xem lại thông tin',
+                //         'type' => 'callback',
+                //         'value' => 'review_info'
+                //     ]
+                // ]
             ],
             'is_active' => true,
             'is_default' => true,

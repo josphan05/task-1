@@ -118,7 +118,17 @@ class TelegramConversationService
         if ($wasEditing) {
             // Đang sửa, cập nhật data và quay lại summary
             $conversation->updateStep('completed', null, $data);
-            $this->completeConversation($conversation, $chatId, $questionSet);
+
+            // Gửi thông báo xác nhận đã sửa
+            $questionText = $currentQuestion->question_text;
+            $confirmMessage = "✅ <b>Đã cập nhật!</b>\n\n" .
+                             "Câu hỏi: <b>" . htmlspecialchars($questionText) . "</b>\n" .
+                             "Câu trả lời mới: <code>" . htmlspecialchars($answer) . "</code>";
+            $this->telegramService->sendMessageWithMarkup($chatId, $confirmMessage, 'HTML');
+
+            $data = $conversation->data ?? [];
+            $summaryMessageId = $data['_summary_message_id'] ?? null;
+            $this->completeConversation($conversation, $chatId, $questionSet, $summaryMessageId);
         } else {
             // Đang điền form mới, tiếp tục như bình thường
             $conversation->updateStep(null, null, $data);
@@ -144,7 +154,11 @@ class TelegramConversationService
             $message = "✏️ <b>Sửa câu hỏi:</b>\n\n";
             $message .= "<b>" . htmlspecialchars($question->question_text) . "</b>\n\n";
             $message .= "📝 <b>Câu trả lời hiện tại:</b> <code>" . htmlspecialchars($currentAnswer) . "</code>\n\n";
-            $message .= "Vui lòng nhập câu trả lời mới hoặc chọn lại từ các tùy chọn bên dưới:";
+            if($question->options != null){
+                $message .= "Vui lòng chọn lại từ các tùy chọn bên dưới:";
+            }else{
+                $message .= "Vui lòng nhập câu trả lời mới:";
+            }
         }
 
         $keyboardJson = null;
@@ -176,7 +190,7 @@ class TelegramConversationService
         $conversation->updateStep($question->field_name, $question->order);
     }
 
-    protected function completeConversation(TelegramConversation $conversation, string $chatId, QuestionSet $questionSet): void
+    protected function completeConversation(TelegramConversation $conversation, string $chatId, QuestionSet $questionSet, ?int $existingMessageId = null): void
     {
         $data = $conversation->data ?? [];
         $conversation->updateStep('completed', null);
@@ -200,18 +214,33 @@ class TelegramConversationService
                     'type' => 'callback',
                     'value' => 'edit_form'
                 ]
-            ],
-            [
-                [
-                    'text' => '📋 Xem lại thông tin',
-                    'type' => 'callback',
-                    'value' => 'review_info'
-                ]
             ]
         ];
 
+        $buttons = $this->filterButtons($buttons, ['review_info']);
+
         $keyboardJson = json_encode($this->telegramService->buildInlineKeyboard($buttons));
-        $this->telegramService->sendMessageWithMarkup($chatId, $message, 'HTML', $keyboardJson);
+
+        if ($existingMessageId) {
+            $result = $this->telegramService->editMessageText($chatId, $existingMessageId, $message, 'HTML', $keyboardJson);
+            if ($result['success'] && isset($result['data'])) {
+                $data['_summary_message_id'] = $existingMessageId;
+                $conversation->updateStep('completed', null, $data);
+            }
+        } else {
+            $result = $this->telegramService->sendMessageWithMarkup($chatId, $message, 'HTML', $keyboardJson);
+            if ($result['success'] && isset($result['data'])) {
+                $response = $result['data'];
+                $messageId = is_object($response) && method_exists($response, 'getMessageId')
+                    ? $response->getMessageId()
+                    : ($response['message_id'] ?? null);
+
+                if ($messageId) {
+                    $data['_summary_message_id'] = $messageId;
+                    $conversation->updateStep('completed', null, $data);
+                }
+            }
+        }
     }
 
     protected function buildSummaryMessage(QuestionSet $questionSet, array $data): string
@@ -232,7 +261,6 @@ class TelegramConversationService
     {
         $conversation = TelegramConversation::where('telegram_user_id', $telegramUserId)->first();
 
-        // Xử lý callback trả lời câu hỏi
         if (str_starts_with($callbackData, 'answer_')) {
             if (!$conversation) {
                 return false;
@@ -241,7 +269,6 @@ class TelegramConversationService
             return true;
         }
 
-        // Xử lý callback sửa câu hỏi cụ thể
         if (str_starts_with($callbackData, 'edit_question_')) {
             if (!$conversation) {
                 return false;
@@ -250,32 +277,36 @@ class TelegramConversationService
             return true;
         }
 
-        // Chỉ xử lý các callback liên quan đến conversation completion
         $conversationCallbacks = ['confirm_send', 'edit_form', 'review_info'];
         if (!in_array($callbackData, $conversationCallbacks)) {
-            // Callback không phải từ conversation, không xử lý ở đây
             return false;
         }
 
-        // Kiểm tra conversation cho các callback liên quan đến completion
         if (!$conversation) {
-            return false;
-        }
-
-        if ($conversation->step !== 'completed') {
-            $this->telegramService->sendMessageWithMarkup($chatId, "Vui lòng hoàn thành form trước.");
             return false;
         }
 
         switch ($callbackData) {
             case 'confirm_send':
+                if ($conversation->step !== 'completed') {
+                    $this->telegramService->sendMessageWithMarkup($chatId, "Vui lòng hoàn thành form trước.");
+                    return false;
+                }
                 $this->handleConfirmSend($conversation, $chatId, $messageId);
                 return true;
             case 'edit_form':
+                if ($conversation->step !== 'completed' && !$this->isEditingMode($conversation)) {
+                    $this->telegramService->sendMessageWithMarkup($chatId, "Vui lòng hoàn thành form trước.");
+                    return false;
+                }
                 $this->handleEditForm($conversation, $chatId, $messageId);
                 return true;
             case 'review_info':
-                $this->handleReviewInfo($conversation, $chatId);
+                if ($conversation->step !== 'completed' && !$this->isEditingMode($conversation)) {
+                    $this->telegramService->sendMessageWithMarkup($chatId, "Vui lòng hoàn thành form trước.");
+                    return false;
+                }
+                $this->handleReviewInfo($conversation, $chatId, $messageId);
                 return true;
             default:
                 return false;
@@ -306,25 +337,29 @@ class TelegramConversationService
             return;
         }
 
-        // Xóa keyboard của message cũ sau khi đã chọn
         if ($messageId) {
             $this->telegramService->editMessageReplyMarkup($chatId, $messageId);
         }
 
         $data = $conversation->data ?? [];
 
-        // Kiểm tra xem đang sửa hay điền mới
-        // Nếu field này đã có trong data và có nhiều hơn 1 field, nghĩa là đang sửa
         $wasEditing = isset($data[$fieldName]) && count($data) > 1;
 
         $data[$fieldName] = $answerValue;
 
         if ($wasEditing) {
-            // Đang sửa, cập nhật data và quay lại summary
             $conversation->updateStep('completed', null, $data);
-            $this->completeConversation($conversation, $chatId, $questionSet);
+
+            $questionText = $currentQuestion->question_text;
+            $confirmMessage = "✅ <b>Đã cập nhật!</b>\n\n" .
+                             "Câu hỏi: <b>" . htmlspecialchars($questionText) . "</b>\n" .
+                             "Câu trả lời mới: <code>" . htmlspecialchars($answerValue) . "</code>";
+            $this->telegramService->sendMessageWithMarkup($chatId, $confirmMessage, 'HTML');
+
+            $data = $conversation->data ?? [];
+            $summaryMessageId = $data['_summary_message_id'] ?? null;
+            $this->completeConversation($conversation, $chatId, $questionSet, $summaryMessageId);
         } else {
-            // Đang điền form mới, tiếp tục như bình thường
             $conversation->updateStep(null, null, $data);
 
             $nextQuestion = $questionSet->questions()
@@ -350,7 +385,6 @@ class TelegramConversationService
             'data' => $data
         ]);
 
-        // Xóa keyboard của message cũ sau khi đã xác nhận gửi
         if ($messageId) {
             $this->telegramService->editMessageReplyMarkup($chatId, $messageId);
         }
@@ -370,7 +404,6 @@ class TelegramConversationService
             return;
         }
 
-        // Xóa keyboard của message cũ
         if ($messageId) {
             $this->telegramService->editMessageReplyMarkup($chatId, $messageId);
         }
@@ -405,7 +438,6 @@ class TelegramConversationService
             $buttons[] = $row;
         }
 
-        // Thêm button quay lại
         if (!empty($buttons)) {
             $buttons[] = [
                 [
@@ -428,7 +460,32 @@ class TelegramConversationService
         }
 
         $keyboardJson = json_encode($this->telegramService->buildInlineKeyboard($buttons));
-        $this->telegramService->sendMessageWithMarkup($chatId, $message, 'HTML', $keyboardJson);
+
+        $editFormMessageId = $data['_edit_form_message_id'] ?? null;
+
+        if ($editFormMessageId) {
+            $editResult = $this->telegramService->editMessageText($chatId, $editFormMessageId, $message, 'HTML', $keyboardJson);
+
+            if (!$editResult['success']) {
+                $editFormMessageId = null;
+                unset($data['_edit_form_message_id']);
+            }
+        }
+
+        if (!$editFormMessageId) {
+            $result = $this->telegramService->sendMessageWithMarkup($chatId, $message, 'HTML', $keyboardJson);
+            if ($result['success'] && isset($result['data'])) {
+                $response = $result['data'];
+                $newMessageId = is_object($response) && method_exists($response, 'getMessageId')
+                    ? $response->getMessageId()
+                    : ($response['message_id'] ?? null);
+
+                if ($newMessageId) {
+                    $data['_edit_form_message_id'] = $newMessageId;
+                    $conversation->updateStep($conversation->step, $conversation->current_question_order, $data);
+                }
+            }
+        }
     }
 
     protected function handleEditQuestion(TelegramConversation $conversation, string $chatId, string $callbackData, ?int $messageId = null): void
@@ -438,7 +495,6 @@ class TelegramConversationService
             return;
         }
 
-        // Xóa keyboard của message cũ
         if ($messageId) {
             $this->telegramService->editMessageReplyMarkup($chatId, $messageId);
         }
@@ -460,12 +516,77 @@ class TelegramConversationService
         $data = $conversation->data ?? [];
         $currentAnswer = $data[$fieldName] ?? '';
 
-        // Hiển thị lại câu hỏi với câu trả lời hiện tại
-        // askQuestion sẽ tự động hiển thị câu trả lời hiện tại nếu được truyền vào
-        $this->askQuestion($conversation, $chatId, $question, $currentAnswer);
+        $editFormMessageId = $data['_edit_form_message_id'] ?? null;
+
+        $message = "✏️ <b>Sửa câu hỏi:</b>\n\n";
+        $message .= "<b>" . htmlspecialchars($question->question_text) . "</b>\n\n";
+        if ($currentAnswer) {
+            $message .= "📝 <b>Câu trả lời hiện tại:</b> <code>" . htmlspecialchars($currentAnswer) . "</code>\n\n";
+        }
+        if($question->options != null){
+            $message .= "Vui lòng chọn lại từ các tùy chọn bên dưới:";
+        }else{
+            $message .= "Vui lòng nhập câu trả lời mới:";
+        }
+
+        $conversation->updateStep($fieldName, $question->order);
+
+        $keyboardJson = null;
+        if (!empty($question->options) && is_array($question->options)) {
+            $buttons = [];
+            $row = [];
+
+            foreach ($question->options as $option) {
+                $row[] = [
+                    'text' => $option['text'] ?? $option['value'] ?? '',
+                    'type' => 'callback',
+                    'value' => 'answer_' . $question->field_name . '_' . ($option['value'] ?? $option['text'] ?? ''),
+                ];
+                if (count($row) >= 2) {
+                    $buttons[] = $row;
+                    $row = [];
+                }
+            }
+            if (!empty($row)) {
+                $buttons[] = $row;
+            }
+
+            if (!empty($buttons)) {
+                $keyboardJson = json_encode($this->telegramService->buildInlineKeyboard($buttons));
+            }
+        }
+
+        if ($editFormMessageId) {
+            $editResult = $this->telegramService->editMessageText($chatId, $editFormMessageId, $message, 'HTML', $keyboardJson);
+            if (!$editResult['success']) {
+                $result = $this->telegramService->sendMessageWithMarkup($chatId, $message, 'HTML', $keyboardJson);
+                if ($result['success'] && isset($result['data'])) {
+                    $response = $result['data'];
+                    $newMessageId = is_object($response) && method_exists($response, 'getMessageId')
+                        ? $response->getMessageId()
+                        : ($response['message_id'] ?? null);
+                    if ($newMessageId) {
+                        $data['_edit_form_message_id'] = $newMessageId;
+                        $conversation->updateStep($fieldName, $question->order, $data);
+                    }
+                }
+            }
+        } else {
+            $result = $this->telegramService->sendMessageWithMarkup($chatId, $message, 'HTML', $keyboardJson);
+            if ($result['success'] && isset($result['data'])) {
+                $response = $result['data'];
+                $newMessageId = is_object($response) && method_exists($response, 'getMessageId')
+                    ? $response->getMessageId()
+                    : ($response['message_id'] ?? null);
+                if ($newMessageId) {
+                    $data['_edit_form_message_id'] = $newMessageId;
+                    $conversation->updateStep($fieldName, $question->order, $data);
+                }
+            }
+        }
     }
 
-    protected function handleReviewInfo(TelegramConversation $conversation, string $chatId): void
+    protected function handleReviewInfo(TelegramConversation $conversation, string $chatId, ?int $messageId = null): void
     {
         $questionSet = $conversation->questionSet;
         if (!$questionSet) {
@@ -473,7 +594,23 @@ class TelegramConversationService
             return;
         }
 
+        if ($messageId) {
+            $this->telegramService->editMessageReplyMarkup($chatId, $messageId);
+        }
+
+        $conversation->updateStep('completed', null);
+
         $data = $conversation->data ?? [];
+
+        $editFormMessageId = $data['_edit_form_message_id'] ?? null;
+        if ($editFormMessageId) {
+            $this->telegramService->deleteMessage($chatId, $editFormMessageId);
+            unset($data['_edit_form_message_id']);
+            $conversation->updateStep('completed', null, $data);
+        }
+
+        $summaryMessageId = $data['_summary_message_id'] ?? null;
+
         $summary = $this->buildSummaryMessage($questionSet, $data);
 
         $buttons = $questionSet->completion_buttons ?? [
@@ -491,7 +628,55 @@ class TelegramConversationService
             ]
         ];
 
+        $buttons = $this->filterButtons($buttons, ['review_info']);
+
         $keyboardJson = json_encode($this->telegramService->buildInlineKeyboard($buttons));
-        $this->telegramService->sendMessageWithMarkup($chatId, $summary, 'HTML', $keyboardJson);
+
+        if ($summaryMessageId) {
+            $this->telegramService->editMessageText($chatId, $summaryMessageId, $summary, 'HTML', $keyboardJson);
+            $conversation->updateStep('completed', null, $data);
+        } else {
+            $result = $this->telegramService->sendMessageWithMarkup($chatId, $summary, 'HTML', $keyboardJson);
+            if ($result['success'] && isset($result['data'])) {
+                $response = $result['data'];
+                $newMessageId = is_object($response) && method_exists($response, 'getMessageId')
+                    ? $response->getMessageId()
+                    : ($response['message_id'] ?? null);
+
+                if ($newMessageId) {
+                    $data['_summary_message_id'] = $newMessageId;
+                    $conversation->updateStep('completed', null, $data);
+                }
+            }
+        }
+    }
+
+    /**
+     */
+    protected function isEditingMode(TelegramConversation $conversation): bool
+    {
+        $data = $conversation->data ?? [];
+        return !empty($data) &&
+               $conversation->step !== null &&
+               $conversation->step !== 'completed' &&
+               count($data) > 1;
+    }
+
+    protected function filterButtons(array $buttons, array $excludeValues): array
+    {
+        $filtered = [];
+        foreach ($buttons as $row) {
+            $filteredRow = [];
+            foreach ($row as $button) {
+                $value = $button['value'] ?? null;
+                if ($value && !in_array($value, $excludeValues)) {
+                    $filteredRow[] = $button;
+                }
+            }
+            if (!empty($filteredRow)) {
+                $filtered[] = $filteredRow;
+            }
+        }
+        return $filtered;
     }
 }

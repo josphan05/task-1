@@ -3,10 +3,8 @@
 namespace App\Services;
 
 use App\Jobs\SendTelegramMessage;
-use App\Models\User;
 use App\Repositories\Contracts\UserRepositoryInterface;
 use GuzzleHttp\Client;
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Log;
 use Telegram\Bot\Api;
 use Telegram\Bot\Exceptions\TelegramSDKException;
@@ -40,7 +38,6 @@ class TelegramService
             'has_markup' => !empty($replyMarkupJson),
         ]);
         try {
-            // Chỉ escape HTML nếu parse_mode không phải HTML hoặc Markdown
             $cleanMessage = ($parseMode === 'HTML' || $parseMode === 'Markdown' || $parseMode === 'MarkdownV2')
                 ? $message
                 : htmlspecialchars($message, ENT_QUOTES, 'UTF-8');
@@ -51,7 +48,6 @@ class TelegramService
                 'parse_mode' => $parseMode,
             ];
 
-            // Add reply markup if provided
             if (!empty($replyMarkupJson)) {
                 $params['reply_markup'] = $replyMarkupJson;
             }
@@ -80,9 +76,6 @@ class TelegramService
         }
     }
 
-    /**
-     * Build inline keyboard markup from button array
-     */
     public function buildInlineKeyboard(array $buttons): array
     {
         $keyboard = [];
@@ -211,9 +204,6 @@ class TelegramService
         }
     }
 
-    /**
-     * Edit message reply markup to remove inline keyboard
-     */
     public function editMessageReplyMarkup(string $chatId, int $messageId, ?string $replyMarkupJson = null): array
     {
         try {
@@ -222,12 +212,9 @@ class TelegramService
                 'message_id' => $messageId,
             ];
 
-            // Nếu replyMarkupJson là null hoặc rỗng, sẽ xóa keyboard
-            // Nếu có giá trị, sẽ cập nhật keyboard mới
             if ($replyMarkupJson !== null) {
                 $params['reply_markup'] = $replyMarkupJson;
             } else {
-                // Xóa keyboard bằng cách set reply_markup là empty inline keyboard
                 $params['reply_markup'] = json_encode(['inline_keyboard' => []]);
             }
 
@@ -245,6 +232,82 @@ class TelegramService
             ];
         } catch (TelegramSDKException $e) {
             Log::error('Telegram editMessageReplyMarkup error', [
+                'chat_id' => $chatId,
+                'message_id' => $messageId,
+                'error' => $e->getMessage(),
+                'code' => $e->getCode(),
+            ]);
+
+            return [
+                'success' => false,
+                'message' => $this->parseErrorMessage($e->getMessage()),
+                'data' => null,
+            ];
+        }
+    }
+
+    public function editMessageText(string $chatId, int $messageId, string $text, string $parseMode = 'HTML', ?string $replyMarkupJson = null): array
+    {
+        try {
+            $params = [
+                'chat_id' => $chatId,
+                'message_id' => $messageId,
+                'text' => $text,
+                'parse_mode' => $parseMode,
+            ];
+
+            if ($replyMarkupJson !== null) {
+                $params['reply_markup'] = $replyMarkupJson;
+            }
+
+            $response = $this->telegram->editMessageText($params);
+
+            Log::info('Telegram message text edited successfully', [
+                'chat_id' => $chatId,
+                'message_id' => $messageId,
+            ]);
+
+            return [
+                'success' => true,
+                'message' => 'Message đã được cập nhật thành công!',
+                'data' => $response,
+            ];
+        } catch (TelegramSDKException $e) {
+            Log::error('Telegram editMessageText error', [
+                'chat_id' => $chatId,
+                'message_id' => $messageId,
+                'error' => $e->getMessage(),
+                'code' => $e->getCode(),
+            ]);
+
+            return [
+                'success' => false,
+                'message' => $this->parseErrorMessage($e->getMessage()),
+                'data' => null,
+            ];
+        }
+    }
+
+    public function deleteMessage(string $chatId, int $messageId): array
+    {
+        try {
+            $response = $this->telegram->deleteMessage([
+                'chat_id' => $chatId,
+                'message_id' => $messageId,
+            ]);
+
+            Log::info('Telegram message deleted successfully', [
+                'chat_id' => $chatId,
+                'message_id' => $messageId,
+            ]);
+
+            return [
+                'success' => true,
+                'message' => 'Message đã được xóa thành công!',
+                'data' => $response,
+            ];
+        } catch (TelegramSDKException $e) {
+            Log::error('Telegram deleteMessage error', [
                 'chat_id' => $chatId,
                 'message_id' => $messageId,
                 'error' => $e->getMessage(),
