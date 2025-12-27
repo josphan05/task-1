@@ -5,13 +5,19 @@ namespace App\Services;
 use App\Models\Question;
 use App\Models\QuestionSet;
 use App\Models\TelegramConversation;
+use App\Models\TelegramCallback;
+use App\Models\TelegramMessage;
+use App\Repositories\Contracts\TelegramCallbackRepositoryInterface;
+use App\Repositories\Contracts\TelegramMessageRepositoryInterface;
 use App\Services\TelegramService;
 use Illuminate\Support\Facades\Log;
 
 class TelegramConversationService
 {
     public function __construct(
-        protected TelegramService $telegramService
+        protected TelegramService $telegramService,
+        protected TelegramCallbackRepositoryInterface $callbackRepository,
+        protected TelegramMessageRepositoryInterface $messageRepository
     ) {}
 
     public function handleConversation(int $telegramUserId, string $chatId, string $messageText): void
@@ -107,6 +113,8 @@ class TelegramConversationService
             return;
         }
 
+        // Refresh conversation để lấy dữ liệu mới nhất
+        $conversation->refresh();
         $data = $conversation->data ?? [];
 
         // Kiểm tra xem đang sửa hay điền mới
@@ -114,6 +122,13 @@ class TelegramConversationService
         $wasEditing = isset($data[$currentQuestion->field_name]) && count($data) > 1;
 
         $data[$currentQuestion->field_name] = $answer;
+
+        Log::info('Saving answer to conversation', [
+            'field_name' => $currentQuestion->field_name,
+            'answer' => $answer,
+            'data_keys' => array_keys($data),
+            'conversation_id' => $conversation->id
+        ]);
 
         if ($wasEditing) {
             // Đang sửa, cập nhật data và quay lại summary
@@ -192,10 +207,25 @@ class TelegramConversationService
 
     protected function completeConversation(TelegramConversation $conversation, string $chatId, QuestionSet $questionSet, ?int $existingMessageId = null): void
     {
+        // Refresh conversation để lấy dữ liệu mới nhất
+        $conversation->refresh();
         $data = $conversation->data ?? [];
+
+        // Lưu lại data trước khi update step để đảm bảo không mất dữ liệu
         $conversation->updateStep('completed', null);
+        // Đảm bảo data vẫn được giữ lại sau khi update step
+        if (!empty($data)) {
+            $conversation->data = $data;
+            $conversation->save();
+        }
 
         $summary = $this->buildSummaryMessage($questionSet, $data);
+
+        Log::info('Complete conversation summary', [
+            'conversation_id' => $conversation->id,
+            'data_keys' => array_keys($data),
+            'summary_preview' => substr($summary, 0, 200)
+        ]);
 
         $completionMessage = $questionSet->completion_message
             ?: "Cảm ơn, thông tin đã được ghi nhận.";
@@ -377,20 +407,161 @@ class TelegramConversationService
 
     protected function handleConfirmSend(TelegramConversation $conversation, string $chatId, ?int $messageId = null): void
     {
+        // Refresh conversation để lấy dữ liệu mới nhất (bao gồm cả callback confirm_send vừa lưu)
+        $conversation->refresh();
         $data = $conversation->data ?? [];
 
         Log::info('Feedback submitted', [
             'telegram_user_id' => $conversation->telegram_user_id,
             'question_set_id' => $conversation->question_set_id,
+            'pending_callbacks_count' => count($data['_pending_callbacks'] ?? []),
+            'pending_messages_count' => count($data['_pending_messages'] ?? []),
             'data' => $data
+        ]);
+
+        // Lưu tất cả pending callbacks vào DB với is_completed = true
+        $pendingCallbacks = $data['_pending_callbacks'] ?? [];
+        $savedCallbacksCount = 0;
+
+        Log::info('Saving pending callbacks', [
+            'count' => count($pendingCallbacks),
+            'conversation_id' => $conversation->id
+        ]);
+
+        foreach ($pendingCallbacks as $callbackData) {
+            if (empty($callbackData['callback_id'])) {
+                continue; // Bỏ qua nếu không có callback_id
+            }
+
+            // Bỏ qua callback "confirm_send" vì nó chỉ là action, không phải dữ liệu cần hiển thị
+            if (($callbackData['callback_data'] ?? '') === 'confirm_send') {
+                continue;
+            }
+
+            // Kiểm tra xem callback đã tồn tại chưa (tránh duplicate)
+            $existingCallback = $this->callbackRepository->findWhere([
+                'callback_id' => $callbackData['callback_id']
+            ])->first();
+
+            if (!$existingCallback) {
+                try {
+                    $saved = $this->callbackRepository->create([
+                        'callback_id' => $callbackData['callback_id'],
+                        'callback_data' => $callbackData['callback_data'] ?? '',
+                        'message_text' => $callbackData['message_text'] ?? null,
+                        'telegram_user_id' => $callbackData['telegram_user_id'] ?? null,
+                        'telegram_username' => $callbackData['telegram_username'] ?? null,
+                        'telegram_first_name' => $callbackData['telegram_first_name'] ?? null,
+                        'telegram_last_name' => $callbackData['telegram_last_name'] ?? null,
+                        'user_id' => $callbackData['user_id'] ?? null,
+                        'message_id' => $callbackData['message_id'] ?? null,
+                        'chat_id' => $callbackData['chat_id'] ?? null,
+                        'raw_data' => $callbackData['raw_data'] ?? null,
+                        'is_completed' => true,
+                        'telegram_conversation_id' => $conversation->id,
+                    ]);
+                    $savedCallbacksCount++;
+                    Log::info('Saved pending callback', [
+                        'callback_id' => $callbackData['callback_id'],
+                        'callback_data' => $callbackData['callback_data'] ?? '',
+                        'id' => $saved->id
+                    ]);
+                } catch (\Exception $e) {
+                    Log::error('Failed to save pending callback', [
+                        'callback_id' => $callbackData['callback_id'],
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString()
+                    ]);
+                }
+            } else {
+                // Nếu đã tồn tại, cập nhật is_completed và conversation_id
+                $existingCallback->is_completed = true;
+                $existingCallback->telegram_conversation_id = $conversation->id;
+                $existingCallback->save();
+                $savedCallbacksCount++;
+                Log::info('Updated existing callback', [
+                    'callback_id' => $callbackData['callback_id'],
+                    'id' => $existingCallback->id
+                ]);
+            }
+        }
+
+        Log::info('Saved callbacks summary', [
+            'total_pending' => count($pendingCallbacks),
+            'saved_count' => $savedCallbacksCount
+        ]);
+
+        // Lưu tất cả pending messages vào DB với is_completed = true
+        $pendingMessages = $data['_pending_messages'] ?? [];
+        $savedMessagesCount = 0;
+
+        Log::info('Saving pending messages', [
+            'count' => count($pendingMessages),
+            'conversation_id' => $conversation->id
+        ]);
+
+        foreach ($pendingMessages as $messageData) {
+            if (empty($messageData['message_id'])) {
+                continue; // Bỏ qua nếu không có message_id
+            }
+
+            // Kiểm tra xem message đã tồn tại chưa (tránh duplicate)
+            $existingMessage = $this->messageRepository->findWhere([
+                'message_id' => $messageData['message_id']
+            ])->first();
+
+            if (!$existingMessage) {
+                try {
+                    $saved = $this->messageRepository->create([
+                        'message_id' => $messageData['message_id'],
+                        'text' => $messageData['text'] ?? null,
+                        'telegram_user_id' => $messageData['telegram_user_id'] ?? null,
+                        'telegram_username' => $messageData['telegram_username'] ?? null,
+                        'telegram_first_name' => $messageData['telegram_first_name'] ?? null,
+                        'telegram_last_name' => $messageData['telegram_last_name'] ?? null,
+                        'user_id' => $messageData['user_id'] ?? null,
+                        'chat_id' => $messageData['chat_id'] ?? null,
+                        'reply_to_message_id' => $messageData['reply_to_message_id'] ?? null,
+                        'raw_data' => $messageData['raw_data'] ?? null,
+                        'is_completed' => true,
+                        'telegram_conversation_id' => $conversation->id,
+                    ]);
+                    $savedMessagesCount++;
+                    Log::info('Saved pending message', [
+                        'message_id' => $messageData['message_id'],
+                        'text' => substr($messageData['text'] ?? '', 0, 50),
+                        'id' => $saved->id
+                    ]);
+                } catch (\Exception $e) {
+                    Log::error('Failed to save pending message', [
+                        'message_id' => $messageData['message_id'],
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString()
+                    ]);
+                }
+            } else {
+                // Nếu đã tồn tại, cập nhật is_completed và conversation_id
+                $existingMessage->is_completed = true;
+                $existingMessage->telegram_conversation_id = $conversation->id;
+                $existingMessage->save();
+                $savedMessagesCount++;
+                Log::info('Updated existing message', [
+                    'message_id' => $messageData['message_id'],
+                    'id' => $existingMessage->id
+                ]);
+            }
+        }
+
+        Log::info('Saved messages summary', [
+            'total_pending' => count($pendingMessages),
+            'saved_count' => $savedMessagesCount
         ]);
 
         if ($messageId) {
             $this->telegramService->editMessageReplyMarkup($chatId, $messageId);
         }
 
-        $message = "✅ <b>Đã gửi thành công!</b>\n\n" .
-                   "Cảm ơn bạn đã phản ánh. Chúng tôi sẽ xử lý sớm nhất có thể.";
+        $message = "✅ <b>Đã gửi thành công!</b>\n\n";
         $this->telegramService->sendMessageWithMarkup($chatId, $message, 'HTML');
 
         $conversation->reset();

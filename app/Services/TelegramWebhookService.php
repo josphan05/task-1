@@ -35,10 +35,70 @@ class TelegramWebhookService
 
         // Xử lý conversation callback trước khi lưu vào DB
         $isConversationCallback = false;
+        $conversation = null;
         if ($telegramUserId && $chatId) {
             try {
                 $messageId = $message['message_id'] ?? null;
                 $isConversationCallback = $this->conversationService->handleCallback($telegramUserId, $chatId, $callbackData, $messageId);
+                
+                // Tìm conversation hiện tại của user
+                $conversation = TelegramConversation::where('telegram_user_id', $telegramUserId)->first();
+                
+                // Nếu là conversation callback, lưu tạm vào conversation data thay vì lưu vào DB ngay
+                // Trừ callback "confirm_send" vì nó sẽ trigger handleConfirmSend và lưu tất cả pending data
+                if ($isConversationCallback && $conversation && $callbackData !== 'confirm_send') {
+                    // Refresh conversation để lấy dữ liệu mới nhất (bao gồm cả các câu trả lời)
+                    $conversation->refresh();
+                    $conversationData = $conversation->data ?? [];
+                    $pendingCallbacks = $conversationData['_pending_callbacks'] ?? [];
+                    
+                    $user = $telegramUserId
+                        ? $this->callbackRepository->findUserByTelegramId($telegramUserId)
+                        : null;
+                    
+                    $pendingCallbacks[] = [
+                        'callback_id' => $callbackId,
+                        'callback_data' => $callbackData,
+                        'message_text' => $message['text'] ?? null,
+                        'telegram_user_id' => $telegramUserId,
+                        'telegram_username' => $from['username'] ?? null,
+                        'telegram_first_name' => $from['first_name'] ?? null,
+                        'telegram_last_name' => $from['last_name'] ?? null,
+                        'user_id' => $user?->id,
+                        'message_id' => $message['message_id'] ?? null,
+                        'chat_id' => $chatId,
+                        'raw_data' => $callbackQuery,
+                        'created_at' => now()->toDateTimeString(),
+                    ];
+                    
+                    // Merge để giữ lại tất cả dữ liệu cũ (các câu trả lời)
+                    $conversationData['_pending_callbacks'] = $pendingCallbacks;
+                    $conversation->data = $conversationData;
+                    $conversation->save();
+                    
+                    // Không lưu vào DB, chỉ trả về
+                    try {
+                        $this->telegramService->answerCallbackQuery($callbackId, "Đã nhận: {$callbackData}");
+                    } catch (\Exception $e) {
+                        Log::error('Failed to answer callback query', [
+                            'callback_id' => $callbackId,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
+                    
+                    return ['status' => 'ok', 'saved_to_conversation' => true];
+                } elseif ($isConversationCallback && $callbackData === 'confirm_send') {
+                    // Callback confirm_send không cần lưu vào pending, chỉ cần answer
+                    try {
+                        $this->telegramService->answerCallbackQuery($callbackId, "Đã nhận: {$callbackData}");
+                    } catch (\Exception $e) {
+                        Log::error('Failed to answer callback query', [
+                            'callback_id' => $callbackId,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
+                    // handleConfirmSend sẽ được gọi trong handleCallback, không cần return ở đây
+                }
             } catch (\Exception $e) {
                 Log::error('Error handling conversation callback', [
                     'telegram_user_id' => $telegramUserId,
@@ -48,6 +108,7 @@ class TelegramWebhookService
             }
         }
 
+        // Chỉ lưu vào DB nếu không phải conversation callback (callback từ admin messages)
         $user = $telegramUserId
             ? $this->callbackRepository->findUserByTelegramId($telegramUserId)
             : null;
@@ -64,6 +125,8 @@ class TelegramWebhookService
             'message_id' => $message['message_id'] ?? null,
             'chat_id' => $chatId,
             'raw_data' => $callbackQuery,
+            'is_completed' => true, // Callback từ admin messages luôn completed
+            'telegram_conversation_id' => null,
         ]);
 
         try {
@@ -116,17 +179,52 @@ class TelegramWebhookService
         $chatId = $chat['id'] ?? null;
         $messageText = $message['text'] ?? '';
 
+        // Tìm conversation hiện tại của user
+        $conversation = $telegramUserId
+            ? TelegramConversation::where('telegram_user_id', $telegramUserId)->first()
+            : null;
+
+        $isConversationMessage = false;
         if (str_starts_with($messageText, '/')) {
             $this->handleCommand($telegramUserId, $chatId, $messageText);
         } else {
-            if ($telegramUserId && $chatId) {
-                $conversation = TelegramConversation::where('telegram_user_id', $telegramUserId)->first();
-                if ($conversation && $conversation->step !== null && $conversation->step !== 'completed') {
-                    $this->conversationService->handleConversation($telegramUserId, $chatId, $messageText);
-                }
+            if ($telegramUserId && $chatId && $conversation && $conversation->step !== null && $conversation->step !== 'completed') {
+                $this->conversationService->handleConversation($telegramUserId, $chatId, $messageText);
+                $isConversationMessage = true;
+                
+                // Refresh conversation để lấy dữ liệu mới nhất (bao gồm cả các câu trả lời)
+                $conversation->refresh();
+                $conversationData = $conversation->data ?? [];
+                $pendingMessages = $conversationData['_pending_messages'] ?? [];
+                
+                $user = $telegramUserId
+                    ? $this->messageRepository->findUserByTelegramId($telegramUserId)
+                    : null;
+                
+                $pendingMessages[] = [
+                    'message_id' => $message['message_id'] ?? null,
+                    'text' => $messageText,
+                    'telegram_user_id' => $telegramUserId,
+                    'telegram_username' => $from['username'] ?? null,
+                    'telegram_first_name' => $from['first_name'] ?? null,
+                    'telegram_last_name' => $from['last_name'] ?? null,
+                    'user_id' => $user?->id,
+                    'chat_id' => $chat['id'] ?? null,
+                    'reply_to_message_id' => $replyTo['message_id'] ?? null,
+                    'raw_data' => $message,
+                    'created_at' => now()->toDateTimeString(),
+                ];
+                
+                // Merge để giữ lại tất cả dữ liệu cũ (các câu trả lời)
+                $conversationData['_pending_messages'] = $pendingMessages;
+                $conversation->data = $conversationData;
+                $conversation->save();
+                
+                return ['status' => 'ok', 'saved_to_conversation' => true];
             }
         }
 
+        // Chỉ lưu vào DB nếu không phải conversation message (message từ admin hoặc không liên quan conversation)
         $user = $telegramUserId
             ? $this->messageRepository->findUserByTelegramId($telegramUserId)
             : null;
@@ -142,6 +240,8 @@ class TelegramWebhookService
             'chat_id' => $chat['id'] ?? null,
             'reply_to_message_id' => $replyTo['message_id'] ?? null,
             'raw_data' => $message,
+            'is_completed' => true, // Message từ admin luôn completed
+            'telegram_conversation_id' => null,
         ];
 
         $savedMessage = $this->messageRepository->updateOrCreate(
