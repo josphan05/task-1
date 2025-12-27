@@ -21,11 +21,13 @@ class TelegramCallbackRepository extends BaseRepository implements TelegramCallb
 
     /**
      * Get callbacks with user relationship, ordered by created_at desc
+     * Chỉ lấy các callback đã completed (is_completed = true)
      */
     public function getWithUser(int $limit = 50): Collection
     {
         return $this->model
             ->with('user')
+            ->where('is_completed', true)
             ->orderBy('created_at', 'desc')
             ->limit($limit)
             ->get();
@@ -33,23 +35,27 @@ class TelegramCallbackRepository extends BaseRepository implements TelegramCallb
 
     /**
      * Get callbacks with user relationship, paginated
+     * Chỉ lấy các callback đã completed (is_completed = true)
      */
     public function paginateWithUser(int $perPage = 20): LengthAwarePaginator
     {
         return $this->model
             ->with('user')
+            ->where('is_completed', true)
             ->orderBy('created_at', 'desc')
             ->paginate($perPage);
     }
 
     /**
      * Get callbacks grouped by message_id, sorted by latest callback in each group
+     * Chỉ lấy các callback đã completed (is_completed = true)
      */
     public function getGroupedByMessageId(int $limit = 100): Collection
     {
-        // Lấy tất cả callbacks, không filter theo loại
+        // Chỉ lấy callbacks đã completed
         $callbacks = $this->model
             ->with('user')
+            ->where('is_completed', true)
             ->orderBy('created_at', 'desc')
             ->limit($limit)
             ->get();
@@ -67,12 +73,14 @@ class TelegramCallbackRepository extends BaseRepository implements TelegramCallb
 
     /**
      * Get new callbacks since a specific ID
+     * Chỉ lấy các callback đã completed (is_completed = true)
      */
     public function getNewSince(int $sinceId): Collection
     {
         return $this->model
             ->with('user')
             ->where('id', '>', $sinceId)
+            ->where('is_completed', true)
             ->orderBy('created_at', 'desc')
             ->get();
     }

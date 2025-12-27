@@ -78,11 +78,6 @@
                                 :required="true"
                                 placeholder="Tìm kiếm và chọn người nhận..."
                             />
-
-                            <div class="form-text mt-2">
-                                <i class="bi bi-info-circle me-1"></i>
-                                Đã chọn: <strong id="selectedCount">0</strong> / {{ $users->count() }} người dùng
-                            </div>
                             @else
                             <label class="form-label fw-semibold">
                                 <i class="bi bi-people me-1"></i> Chọn người nhận <span class="text-danger">*</span>

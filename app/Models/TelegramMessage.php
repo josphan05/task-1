@@ -18,6 +18,8 @@ class TelegramMessage extends Model
         'chat_id',
         'reply_to_message_id',
         'raw_data',
+        'is_completed',
+        'telegram_conversation_id',
     ];
 
     protected $casts = [

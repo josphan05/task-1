@@ -19,6 +19,8 @@ class TelegramCallback extends Model
         'message_id',
         'chat_id',
         'raw_data',
+        'is_completed',
+        'telegram_conversation_id',
     ];
 
     protected $casts = [
